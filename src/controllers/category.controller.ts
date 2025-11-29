@@ -1,0 +1,105 @@
+import { Response } from "express";
+import { AuthRequest } from "../middleware/auth";
+import { CategoryService } from "../services/category.service";
+
+const categoryService = new CategoryService();
+
+export class CategoryController {
+  async listCategories(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const search = req.query.search as string | undefined;
+
+      const categories = await categoryService.listCategories({ orgId, search });
+      res.json(categories);
+    } catch (error) {
+      console.error("List categories error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async getCategory(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const { id } = req.params;
+
+      const category = await categoryService.getCategoryById(id, orgId);
+      res.json(category);
+    } catch (error: any) {
+      if (error.message === "Category not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      console.error("Get category error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async createCategory(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const { name, description } = req.body;
+
+      const category = await categoryService.createCategory({
+        orgId,
+        name,
+        description,
+      });
+
+      res.status(201).json(category);
+    } catch (error: any) {
+      if (error.message === "Category name already exists") {
+        return res.status(400).json({ message: error.message });
+      }
+      if (error.code === 11000) {
+        return res.status(400).json({ message: "Category name already exists" });
+      }
+      console.error("Create category error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async updateCategory(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const { id } = req.params;
+      const { name, description, isActive } = req.body;
+
+      const category = await categoryService.updateCategory(id, orgId, {
+        name,
+        description,
+        isActive,
+      });
+
+      res.json(category);
+    } catch (error: any) {
+      if (error.message === "Category not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Category name already exists") {
+        return res.status(400).json({ message: error.message });
+      }
+      if (error.code === 11000) {
+        return res.status(400).json({ message: "Category name already exists" });
+      }
+      console.error("Update category error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async deleteCategory(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const { id } = req.params;
+
+      const result = await categoryService.deleteCategory(id, orgId);
+      res.json(result);
+    } catch (error: any) {
+      if (error.message === "Category not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      console.error("Delete category error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+}
+

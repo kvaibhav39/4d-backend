@@ -1,0 +1,61 @@
+[dotenv@17.2.3] injecting env (3) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+Backend server listening on port 5001
+Connected to MongoDB
+Get product error CastError: Cast to ObjectId failed for value "[object Object]" (type string) at path "_id" for model "Product"
+    at SchemaObjectId.cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schema/objectId.js:253:11)
+    at SchemaType.applySetters (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schemaType.js:1280:12)
+    at SchemaType.castForQuery (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schemaType.js:1706:17)
+    at cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/cast.js:390:32)
+    at Query.cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:5016:12)
+    at Query._castConditions (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:2380:10)
+    at model.Query._findOne (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:2708:8)
+    at model.Query.exec (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:4627:80)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /Users/vaibhavkhunt/Documents/personal/RentWeb/backend/dist/routes/products.js:32:25 {
+  stringValue: '"[object Object]"',
+  messageFormat: undefined,
+  kind: 'ObjectId',
+  value: '[object Object]',
+  path: '_id',
+  reason: BSONError: input must be a 24 character hex string, 12 byte Uint8Array, or an integer
+      at new ObjectId (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/bson/lib/bson.cjs:2565:23)
+      at castObjectId (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/cast/objectid.js:25:12)
+      at SchemaObjectId.cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schema/objectId.js:251:12)
+      at SchemaType.applySetters (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schemaType.js:1280:12)
+      at SchemaType.castForQuery (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schemaType.js:1706:17)
+      at cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/cast.js:390:32)
+      at Query.cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:5016:12)
+      at Query._castConditions (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:2380:10)
+      at model.Query._findOne (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:2708:8)
+      at model.Query.exec (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:4627:80),
+  valueType: 'string'
+}
+Get product error CastError: Cast to ObjectId failed for value "[object Object]" (type string) at path "_id" for model "Product"
+    at SchemaObjectId.cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schema/objectId.js:253:11)
+    at SchemaType.applySetters (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schemaType.js:1280:12)
+    at SchemaType.castForQuery (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schemaType.js:1706:17)
+    at cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/cast.js:390:32)
+    at Query.cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:5016:12)
+    at Query._castConditions (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:2380:10)
+    at model.Query._findOne (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:2708:8)
+    at model.Query.exec (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:4627:80)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /Users/vaibhavkhunt/Documents/personal/RentWeb/backend/dist/routes/products.js:32:25 {
+  stringValue: '"[object Object]"',
+  messageFormat: undefined,
+  kind: 'ObjectId',
+  value: '[object Object]',
+  path: '_id',
+  reason: BSONError: input must be a 24 character hex string, 12 byte Uint8Array, or an integer
+      at new ObjectId (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/bson/lib/bson.cjs:2565:23)
+      at castObjectId (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/cast/objectid.js:25:12)
+      at SchemaObjectId.cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schema/objectId.js:251:12)
+      at SchemaType.applySetters (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schemaType.js:1280:12)
+      at SchemaType.castForQuery (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/schemaType.js:1706:17)
+      at cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/cast.js:390:32)
+      at Query.cast (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:5016:12)
+      at Query._castConditions (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:2380:10)
+      at model.Query._findOne (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:2708:8)
+      at model.Query.exec (/Users/vaibhavkhunt/Documents/personal/RentWeb/backend/node_modules/mongoose/lib/query.js:4627:80),
+  valueType: 'string'
+}

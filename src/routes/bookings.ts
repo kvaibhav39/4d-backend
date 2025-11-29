@@ -1,0 +1,62 @@
+import { Router } from "express";
+import { authMiddleware } from "../middleware/auth";
+import {
+  validate,
+  validateQuery,
+  validateParams,
+} from "../middleware/validate";
+import {
+  checkConflictsSchema,
+  createBookingSchema,
+  updateBookingSchema,
+  updateBookingStatusSchema,
+  addPaymentSchema,
+  getBookingParamsSchema,
+  listBookingsQuerySchema,
+} from "../validators/booking.validator";
+import { BookingController } from "../controllers/booking.controller";
+
+const router = Router();
+const bookingController = new BookingController();
+
+router.use(authMiddleware);
+
+// Specific routes must come before parameterized routes
+router.post("/check-conflicts", validate(checkConflictsSchema), (req, res) =>
+  bookingController.checkConflicts(req, res)
+);
+
+router.get("/", validateQuery(listBookingsQuerySchema), (req, res) =>
+  bookingController.listBookings(req, res)
+);
+
+router.post("/", validate(createBookingSchema), (req, res) =>
+  bookingController.createBooking(req, res)
+);
+
+router.get("/:id", validateParams(getBookingParamsSchema), (req, res) =>
+  bookingController.getBooking(req, res)
+);
+
+router.put(
+  "/:id",
+  validateParams(getBookingParamsSchema),
+  validate(updateBookingSchema),
+  (req, res) => bookingController.updateBooking(req, res)
+);
+
+router.patch(
+  "/:id/status",
+  validateParams(getBookingParamsSchema),
+  validate(updateBookingStatusSchema),
+  (req, res) => bookingController.updateBookingStatus(req, res)
+);
+
+router.post(
+  "/:id/payments",
+  validateParams(getBookingParamsSchema),
+  validate(addPaymentSchema),
+  (req, res) => bookingController.addPayment(req, res)
+);
+
+export default router;
