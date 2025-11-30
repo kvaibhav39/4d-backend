@@ -30,5 +30,46 @@ export class DashboardController {
       res.status(500).json({ message: "Internal server error" });
     }
   }
-}
 
+  async getRecentBookings(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const days = req.query.days ? parseInt(req.query.days as string) : 5;
+
+      const bookings = await dashboardService.getRecentBookings(orgId, days);
+      res.json(bookings);
+    } catch (error) {
+      console.error("Dashboard recent bookings error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async getReadyForPickupBookings(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const days = req.query.days ? parseInt(req.query.days as string) : 7;
+
+      const bookings = await dashboardService.getReadyForPickupBookings(
+        orgId,
+        days
+      );
+      res.json(bookings);
+    } catch (error) {
+      console.error("Dashboard ready for pickup bookings error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async getUpcomingBookings(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const days = req.query.days ? parseInt(req.query.days as string) : 7;
+
+      const bookings = await dashboardService.getUpcomingBookings(orgId, days);
+      res.json(bookings);
+    } catch (error) {
+      console.error("Dashboard upcoming bookings error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+}

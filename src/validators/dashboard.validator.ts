@@ -14,3 +14,29 @@ export const dashboardBookingsQuerySchema = Joi.object({
   }),
 });
 
+export const dashboardRecentBookingsQuerySchema = Joi.object({
+  days: Joi.number().integer().min(1).max(30).optional().messages({
+    "number.base": "Days must be a number",
+    "number.integer": "Days must be an integer",
+    "number.min": "Days must be at least 1",
+    "number.max": "Days must not exceed 30",
+  }),
+});
+
+export const dashboardUpcomingBookingsQuerySchema = Joi.object({
+  days: Joi.number().integer().min(1).max(30).optional().messages({
+    "number.base": "Days must be a number",
+    "number.integer": "Days must be an integer",
+    "number.min": "Days must be at least 1",
+    "number.max": "Days must not exceed 30",
+  }),
+});
+
+export const dashboardReadyForPickupBookingsQuerySchema = Joi.object({
+  days: Joi.number().integer().min(1).max(30).optional().messages({
+    "number.base": "Days must be a number",
+    "number.integer": "Days must be an integer",
+    "number.min": "Days must be at least 1",
+    "number.max": "Days must not exceed 30",
+  }),
+});
