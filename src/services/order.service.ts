@@ -66,7 +66,7 @@ export class OrderService {
     const totalReceived = bookings.reduce((sum, booking) => {
       const paid =
         booking.payments
-          .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
           .reduce((s, p) => s + p.amount, 0) -
         booking.payments
           .filter((p) => p.type === "REFUND")
@@ -334,7 +334,7 @@ export class OrderService {
                 type: "ADVANCE" as PaymentType,
                 amount: advanceAmount,
                 at: new Date(),
-                note: "Advance on booking",
+                note: `Advance received ₹${advanceAmount.toFixed(2)}`,
               },
             ]
           : [],
@@ -396,7 +396,7 @@ export class OrderService {
     const bookingsNeedingPayment = activeBookings.filter((b) => {
       const totalPaid =
         b.payments
-          .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
           .reduce((sum, p) => sum + p.amount, 0) -
         b.payments
           .filter((p) => p.type === "REFUND")
@@ -426,7 +426,7 @@ export class OrderService {
       // Calculate how much this booking still needs
       const bookingTotalPaid =
         booking.payments
-          .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
           .reduce((sum, p) => sum + p.amount, 0) -
         booking.payments
           .filter((p) => p.type === "REFUND")
@@ -462,7 +462,9 @@ export class OrderService {
         // Update booking amounts
         const totalPaid =
           booking.payments
-            .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+            .filter(
+              (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
+            )
             .reduce((sum, p) => sum + p.amount, 0) -
           booking.payments
             .filter((p) => p.type === "REFUND")
@@ -521,7 +523,7 @@ export class OrderService {
     // Calculate total advance paid for this booking
     const bookingAdvance =
       booking.payments
-        .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+        .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
         .reduce((sum, p) => sum + p.amount, 0) -
       booking.payments
         .filter((p) => p.type === "REFUND")
@@ -552,7 +554,9 @@ export class OrderService {
         const bookingRemaining =
           activeBooking.decidedRent -
           (activeBooking.payments
-            .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+            .filter(
+              (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
+            )
             .reduce((sum, p) => sum + p.amount, 0) -
             activeBooking.payments
               .filter((p) => p.type === "REFUND")
@@ -581,7 +585,7 @@ export class OrderService {
           const totalPaid =
             activeBooking.payments
               .filter(
-                (p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING"
+                (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
               )
               .reduce((sum, p) => sum + p.amount, 0) -
             activeBooking.payments
@@ -645,7 +649,7 @@ export class OrderService {
     // Recalculate booking amounts after all transfers and refunds
     const totalPaidAfterRefund =
       booking.payments
-        .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+        .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
         .reduce((sum, p) => sum + p.amount, 0) -
       booking.payments
         .filter((p) => p.type === "REFUND")
@@ -704,7 +708,7 @@ export class OrderService {
     // Calculate total advance paid for this booking
     const bookingAdvance =
       booking.payments
-        .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+        .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
         .reduce((sum, p) => sum + p.amount, 0) -
       booking.payments
         .filter((p) => p.type === "REFUND")
@@ -741,7 +745,9 @@ export class OrderService {
         const bookingRemaining =
           activeBooking.decidedRent -
           (activeBooking.payments
-            .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+            .filter(
+              (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
+            )
             .reduce((sum, p) => sum + p.amount, 0) -
             activeBooking.payments
               .filter((p) => p.type === "REFUND")
@@ -814,7 +820,7 @@ export class OrderService {
     const totalPaid = bookings.reduce((sum, booking) => {
       const bookingPaid =
         booking.payments
-          .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
           .reduce((s, p) => s + p.amount, 0) -
         booking.payments
           .filter((p) => p.type === "REFUND")
@@ -867,7 +873,7 @@ export class OrderService {
     const totalPaid = bookings.reduce((sum, booking) => {
       const bookingPaid =
         booking.payments
-          .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
           .reduce((s, p) => s + p.amount, 0) -
         booking.payments
           .filter((p) => p.type === "REFUND")
@@ -903,7 +909,9 @@ export class OrderService {
         // Calculate how much this booking has paid
         const bookingPaid =
           booking.payments
-            .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+            .filter(
+              (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
+            )
             .reduce((s, p) => s + p.amount, 0) -
           booking.payments
             .filter((p) => p.type === "REFUND")
@@ -941,7 +949,7 @@ export class OrderService {
             const totalPaidAfterRefund =
               booking.payments
                 .filter(
-                  (p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING"
+                  (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
                 )
                 .reduce((s, p) => s + p.amount, 0) -
               booking.payments

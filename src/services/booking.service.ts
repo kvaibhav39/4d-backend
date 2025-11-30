@@ -251,7 +251,7 @@ export class BookingService {
                 type: "ADVANCE",
                 amount: advanceAmount,
                 at: new Date(),
-                note: "Advance on booking",
+                note: `Advance received ₹${advanceAmount.toFixed(2)}`,
               },
             ]
           : [],
@@ -336,7 +336,7 @@ export class BookingService {
     // Recalculate remaining based on all payments
     const totalPaid =
       existing.payments
-        .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+        .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
         .reduce((sum, p) => sum + p.amount, 0) -
       existing.payments
         .filter((p) => p.type === "REFUND")
@@ -362,14 +362,10 @@ export class BookingService {
     return updated;
   }
 
-  async updateBookingStatus(
-    id: string,
-    orgId: string,
-    status: BookingStatus,
-    paymentAmount?: number,
-    paymentNote?: string,
-    refundAmount?: number
-  ) {
+  /**
+   * Cancel a booking - only status change allowed via this method
+   */
+  async cancelBooking(id: string, orgId: string, refundAmount?: number) {
     const booking = await Booking.findOne({ _id: id, orgId });
     if (!booking) {
       throw new Error("Booking not found");
@@ -377,47 +373,67 @@ export class BookingService {
 
     const previousStatus = booking.status;
 
-    // If cancelling booking, validate that booking is in BOOKED status
-    if (status === "CANCELLED" && previousStatus !== "CANCELLED") {
-      // Only allow cancellation if booking is in BOOKED status
-      if (previousStatus !== "BOOKED") {
-        throw new Error(
-          `Cannot cancel booking. Booking must be in "BOOKED" status to cancel. Current status: ${previousStatus}`
-        );
-      }
-
-      // For cancellation, use refundAmount parameter if provided
-      // If not provided, it will be calculated automatically
-      const cancellationRefundAmount =
-        refundAmount !== undefined && refundAmount >= 0
-          ? refundAmount
-          : undefined;
-
-      const refundInfo = await orderService.handleBookingCancellation(
-        id,
-        orgId,
-        cancellationRefundAmount
+    // Only allow cancellation if booking is in BOOKED status
+    if (previousStatus !== "BOOKED") {
+      throw new Error(
+        `Cannot cancel booking. Booking must be in "BOOKED" status to cancel. Current status: ${previousStatus}`
       );
-      // The booking status is already set to CANCELLED by handleBookingCancellation
-      const booking = await Booking.findById(id)
-        .populate("productId")
-        .populate("categoryId")
-        .populate("orderId");
-
-      // Attach refund info to booking object for frontend
-      (booking as any).cancellationInfo = refundInfo;
-      return booking;
     }
 
-    booking.status = status;
+    // For cancellation, use refundAmount parameter if provided
+    // If not provided, it will be calculated automatically
+    const cancellationRefundAmount =
+      refundAmount !== undefined && refundAmount >= 0
+        ? refundAmount
+        : undefined;
 
-    // If payment amount is provided for ISSUE or RETURN, add it as a payment
+    const refundInfo = await orderService.handleBookingCancellation(
+      id,
+      orgId,
+      cancellationRefundAmount
+    );
+    // The booking status is already set to CANCELLED by handleBookingCancellation
+    const cancelledBooking = await Booking.findById(id)
+      .populate("productId")
+      .populate("categoryId")
+      .populate("orderId");
+
+    // Attach refund info to booking object for frontend
+    (cancelledBooking as any).cancellationInfo = refundInfo;
+    return cancelledBooking;
+  }
+
+  /**
+   * Issue a product - change status to ISSUED and optionally collect payment
+   */
+  async issueProduct(
+    id: string,
+    orgId: string,
+    paymentAmount?: number,
+    paymentNote?: string
+  ) {
+    const booking = await Booking.findOne({ _id: id, orgId });
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    // Only allow issuing if booking is in BOOKED status
+    if (booking.status !== "BOOKED") {
+      throw new Error(
+        `Cannot issue booking. Booking must be in "BOOKED" status. Current status: ${booking.status}`
+      );
+    }
+
+    // If payment amount is provided, add it as a payment
     if (paymentAmount !== undefined && paymentAmount > 0) {
       // Calculate current remaining amount before adding payment
-      const currentTotalPaid = booking.payments.reduce((sum, p) => {
-        if (p.type === "REFUND") return sum - p.amount;
-        return sum + p.amount;
-      }, 0);
+      const currentTotalPaid =
+        booking.payments
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
+          .reduce((sum, p) => sum + p.amount, 0) -
+        booking.payments
+          .filter((p) => p.type === "REFUND")
+          .reduce((sum, p) => sum + p.amount, 0);
       const currentRemaining = booking.decidedRent - currentTotalPaid;
 
       // Prevent overpayment - only allow payment up to remaining amount
@@ -440,31 +456,127 @@ export class BookingService {
         );
       }
 
-      let paymentType: PaymentType = "RENT_REMAINING";
-
-      if (status === "ISSUED") {
-        paymentType = "RENT_REMAINING";
-      } else if (status === "RETURNED") {
-        paymentType = "RENT_REMAINING";
-      }
-
-      // Add payment entry
+      // Add payment entry as PAYMENT_RECEIVED (normal payment on issue)
+      const defaultNote = `Payment received ₹${allowedPaymentAmount.toFixed(
+        2
+      )}`;
       booking.payments.push({
-        type: paymentType,
+        type: "PAYMENT_RECEIVED",
         amount: allowedPaymentAmount,
         at: new Date(),
-        note:
-          paymentNote ||
-          (status === "ISSUED" ? "Payment on issue" : "Payment on return"),
+        note: paymentNote || defaultNote,
       });
 
-      // Recalculate remaining amount
-      const totalPaid = booking.payments.reduce((sum, p) => {
-        if (p.type === "REFUND") return sum - p.amount;
-        return sum + p.amount;
-      }, 0);
+      // Recalculate amounts
+      const totalPaid =
+        booking.payments
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
+          .reduce((sum, p) => sum + p.amount, 0) -
+        booking.payments
+          .filter((p) => p.type === "REFUND")
+          .reduce((sum, p) => sum + p.amount, 0);
+
       booking.remainingAmount = booking.decidedRent - totalPaid;
     }
+
+    // Change status to ISSUED
+    booking.status = "ISSUED";
+
+    const savedBooking = await booking.save();
+
+    // Populate order info before returning
+    await savedBooking.populate("orderId", "customerName customerPhone");
+
+    // Update order status after booking status change
+    if (savedBooking.orderId) {
+      const orderIdStr =
+        typeof savedBooking.orderId === "string"
+          ? savedBooking.orderId
+          : (savedBooking.orderId as any)._id.toString();
+      await orderService.updateOrderStatus(orderIdStr);
+    }
+
+    return savedBooking;
+  }
+
+  /**
+   * Return a product - change status to RETURNED and optionally collect payment
+   */
+  async returnProduct(
+    id: string,
+    orgId: string,
+    paymentAmount?: number,
+    paymentNote?: string
+  ) {
+    const booking = await Booking.findOne({ _id: id, orgId });
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    // Only allow returning if booking is in ISSUED status
+    if (booking.status !== "ISSUED") {
+      throw new Error(
+        `Cannot return booking. Booking must be in "ISSUED" status. Current status: ${booking.status}`
+      );
+    }
+
+    // If payment amount is provided, add it as a payment
+    if (paymentAmount !== undefined && paymentAmount > 0) {
+      // Calculate current remaining amount before adding payment
+      const currentTotalPaid =
+        booking.payments
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
+          .reduce((sum, p) => sum + p.amount, 0) -
+        booking.payments
+          .filter((p) => p.type === "REFUND")
+          .reduce((sum, p) => sum + p.amount, 0);
+      const currentRemaining = booking.decidedRent - currentTotalPaid;
+
+      // Prevent overpayment - only allow payment up to remaining amount
+      if (currentRemaining <= 0) {
+        throw new Error(
+          "Booking is already fully paid. No additional payment needed."
+        );
+      }
+
+      // Don't allow payment more than remaining amount
+      const allowedPaymentAmount = Math.min(paymentAmount, currentRemaining);
+
+      if (allowedPaymentAmount < paymentAmount) {
+        throw new Error(
+          `Payment amount (₹${paymentAmount.toFixed(
+            2
+          )}) exceeds remaining amount (₹${currentRemaining.toFixed(
+            2
+          )}). Maximum allowed: ₹${currentRemaining.toFixed(2)}.`
+        );
+      }
+
+      // Add payment entry as PAYMENT_RECEIVED (normal payment on return)
+      const defaultNote = `Payment received ₹${allowedPaymentAmount.toFixed(
+        2
+      )}`;
+      booking.payments.push({
+        type: "PAYMENT_RECEIVED",
+        amount: allowedPaymentAmount,
+        at: new Date(),
+        note: paymentNote || defaultNote,
+      });
+
+      // Recalculate amounts
+      const totalPaid =
+        booking.payments
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
+          .reduce((sum, p) => sum + p.amount, 0) -
+        booking.payments
+          .filter((p) => p.type === "REFUND")
+          .reduce((sum, p) => sum + p.amount, 0);
+
+      booking.remainingAmount = booking.decidedRent - totalPaid;
+    }
+
+    // Change status to RETURNED
+    booking.status = "RETURNED";
 
     const savedBooking = await booking.save();
 
@@ -492,7 +604,7 @@ export class BookingService {
     // Calculate current remaining amount before adding new payment
     const currentTotalPaid =
       booking.payments
-        .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+        .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
         .reduce((sum, p) => sum + p.amount, 0) -
       booking.payments
         .filter((p) => p.type === "REFUND")
@@ -509,28 +621,61 @@ export class BookingService {
     // If trying to pay more than remaining, adjust to remaining amount only
     const allowedPaymentAmount = Math.min(paymentData.amount, currentRemaining);
 
+    // Auto-determine payment type: if booking is still BOOKED, it's ADVANCE
+    let paymentType: PaymentType = paymentData.type;
+    if (booking.status === "BOOKED") {
+      paymentType = "ADVANCE";
+    } else {
+      paymentType = "PAYMENT_RECEIVED";
+    }
+
+    let paymentNote = paymentData.note;
+
+    // If payment was adjusted, include that in the note
+    if (!paymentNote && allowedPaymentAmount < paymentData.amount) {
+      if (paymentType === "ADVANCE") {
+        paymentNote = `Advance received ₹${allowedPaymentAmount.toFixed(
+          2
+        )} (adjusted from ₹${paymentData.amount.toFixed(2)})`;
+      } else {
+        paymentNote = `Payment received ₹${allowedPaymentAmount.toFixed(
+          2
+        )} (adjusted from ₹${paymentData.amount.toFixed(2)})`;
+      }
+    } else if (!paymentNote) {
+      if (paymentType === "ADVANCE") {
+        paymentNote = `Advance received ₹${allowedPaymentAmount.toFixed(2)}`;
+      } else {
+        paymentNote = `Payment received ₹${allowedPaymentAmount.toFixed(2)}`;
+      }
+    }
+
     booking.payments.push({
-      type: paymentData.type,
+      type: paymentType,
       amount: allowedPaymentAmount,
       at: new Date(),
-      note:
-        paymentData.note ||
-        (allowedPaymentAmount < paymentData.amount
-          ? `Payment adjusted from ₹${paymentData.amount.toFixed(
-              2
-            )} to remaining amount`
-          : undefined),
+      note: paymentNote,
     });
 
-    // Recalculate remaining amount
+    // Recalculate amounts
     const totalPaid =
       booking.payments
-        .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+        .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
         .reduce((sum, p) => sum + p.amount, 0) -
       booking.payments
         .filter((p) => p.type === "REFUND")
         .reduce((sum, p) => sum + p.amount, 0);
 
+    // Calculate total advance (only ADVANCE payments)
+    const totalAdvance =
+      booking.payments
+        .filter((p) => p.type === "ADVANCE")
+        .reduce((sum, p) => sum + p.amount, 0) -
+      booking.payments
+        .filter((p) => p.type === "REFUND")
+        .reduce((sum, p) => sum + p.amount, 0);
+
+    booking.advanceAmount = Math.max(0, totalAdvance);
     booking.remainingAmount = booking.decidedRent - totalPaid;
 
     const savedBooking = await booking.save();

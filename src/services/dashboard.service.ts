@@ -34,7 +34,9 @@ export class DashboardService {
       totalReceived: bookings.reduce((sum, booking) => {
         const paid =
           booking.payments
-            .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+            .filter(
+              (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
+            )
             .reduce((s, p) => s + p.amount, 0) -
           booking.payments
             .filter((p) => p.type === "REFUND")

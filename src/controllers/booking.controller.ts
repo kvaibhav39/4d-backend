@@ -140,19 +140,17 @@ export class BookingController {
     }
   }
 
-  async updateBookingStatus(req: AuthRequest, res: Response) {
+  async issueProduct(req: AuthRequest, res: Response) {
     try {
       const orgId = req.user!.orgId;
       const { id } = req.params;
-      const { status, paymentAmount, paymentNote, refundAmount } = req.body;
+      const { paymentAmount, paymentNote } = req.body;
 
-      const booking = await bookingService.updateBookingStatus(
+      const booking = await bookingService.issueProduct(
         id,
         orgId,
-        status,
         paymentAmount,
-        paymentNote,
-        refundAmount
+        paymentNote
       );
       res.json(booking);
     } catch (error: any) {
@@ -169,6 +167,70 @@ export class BookingController {
         return res.status(400).json({ message: error.message });
       }
       if (
+        error.message.includes("Cannot issue booking") ||
+        error.message.includes('must be in "BOOKED" status')
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
+      console.error("Issue product error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async returnProduct(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const { id } = req.params;
+      const { paymentAmount, paymentNote } = req.body;
+
+      const booking = await bookingService.returnProduct(
+        id,
+        orgId,
+        paymentAmount,
+        paymentNote
+      );
+      res.json(booking);
+    } catch (error: any) {
+      if (error.message === "Booking not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (
+        error.message ===
+        "Booking is already fully paid. No additional payment needed."
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
+      if (error.message.includes("exceeds remaining amount")) {
+        return res.status(400).json({ message: error.message });
+      }
+      if (
+        error.message.includes("Cannot return booking") ||
+        error.message.includes('must be in "ISSUED" status')
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
+      console.error("Return product error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async cancelBooking(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const { id } = req.params;
+      const { refundAmount } = req.body;
+
+      const booking = await bookingService.cancelBooking(
+        id,
+        orgId,
+        refundAmount
+      );
+      res.json(booking);
+    } catch (error: any) {
+      if (error.message === "Booking not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (
         error.message.includes("Cannot cancel booking") ||
         error.message.includes('must be in "BOOKED" status')
       ) {
@@ -180,7 +242,7 @@ export class BookingController {
       ) {
         return res.status(400).json({ message: error.message });
       }
-      console.error("Update status error", error);
+      console.error("Cancel booking error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }

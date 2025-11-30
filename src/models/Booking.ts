@@ -2,7 +2,11 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export type BookingStatus = "BOOKED" | "ISSUED" | "RETURNED" | "CANCELLED";
 
-export type PaymentType = "ADVANCE" | "RENT_REMAINING" | "REFUND";
+export type PaymentType =
+  | "ADVANCE"
+  | "RENT_REMAINING"
+  | "PAYMENT_RECEIVED"
+  | "REFUND";
 
 export interface IPaymentEntry {
   type: PaymentType;
@@ -30,7 +34,11 @@ export interface IBooking extends Document {
 
 const PaymentSchema = new Schema<IPaymentEntry>(
   {
-    type: { type: String, enum: ["ADVANCE", "RENT_REMAINING", "REFUND"], required: true },
+    type: {
+      type: String,
+      enum: ["ADVANCE", "RENT_REMAINING", "PAYMENT_RECEIVED", "REFUND"],
+      required: true,
+    },
     amount: { type: Number, required: true },
     at: { type: Date, required: true, default: Date.now },
     note: { type: String },
@@ -66,5 +74,3 @@ BookingSchema.index({ orgId: 1, productId: 1, fromDateTime: 1, toDateTime: 1 });
 BookingSchema.index({ orderId: 1 });
 
 export const Booking = mongoose.model<IBooking>("Booking", BookingSchema);
-
-

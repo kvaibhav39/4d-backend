@@ -9,10 +9,12 @@ import {
   checkConflictsSchema,
   createBookingSchema,
   updateBookingSchema,
-  updateBookingStatusSchema,
   addPaymentSchema,
   getBookingParamsSchema,
   listBookingsQuerySchema,
+  issueProductSchema,
+  returnProductSchema,
+  cancelBookingSchema,
 } from "../validators/booking.validator";
 import { BookingController } from "../controllers/booking.controller";
 
@@ -45,11 +47,25 @@ router.put(
   (req, res) => bookingController.updateBooking(req, res)
 );
 
-router.patch(
-  "/:id/status",
+router.post(
+  "/:id/issue",
   validateParams(getBookingParamsSchema),
-  validate(updateBookingStatusSchema),
-  (req, res) => bookingController.updateBookingStatus(req, res)
+  validate(issueProductSchema),
+  (req, res) => bookingController.issueProduct(req, res)
+);
+
+router.post(
+  "/:id/return",
+  validateParams(getBookingParamsSchema),
+  validate(returnProductSchema),
+  (req, res) => bookingController.returnProduct(req, res)
+);
+
+router.post(
+  "/:id/cancel",
+  validateParams(getBookingParamsSchema),
+  validate(cancelBookingSchema),
+  (req, res) => bookingController.cancelBooking(req, res)
 );
 
 router.post(

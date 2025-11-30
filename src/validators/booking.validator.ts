@@ -126,30 +126,47 @@ export const updateBookingSchema = Joi.object({
   return value;
 }, "Date validation");
 
-export const updateBookingStatusSchema = Joi.object({
-  status: Joi.string()
-    .valid("BOOKED", "ISSUED", "RETURNED", "CANCELLED")
-    .required()
-    .messages({
-      "any.only": "Status must be one of: BOOKED, ISSUED, RETURNED, CANCELLED",
-      "any.required": "Status is required",
-    }),
+export const issueProductSchema = Joi.object({
   paymentAmount: Joi.number().min(0).optional().messages({
     "number.min": "Payment amount must be positive or zero",
   }),
+  paymentNote: Joi.string()
+    .trim()
+    .max(500)
+    .optional()
+    .allow("", null)
+    .messages({
+      "string.max": "Payment note must not exceed 500 characters",
+    }),
+});
+
+export const returnProductSchema = Joi.object({
+  paymentAmount: Joi.number().min(0).optional().messages({
+    "number.min": "Payment amount must be positive or zero",
+  }),
+  paymentNote: Joi.string()
+    .trim()
+    .max(500)
+    .optional()
+    .allow("", null)
+    .messages({
+      "string.max": "Payment note must not exceed 500 characters",
+    }),
+});
+
+export const cancelBookingSchema = Joi.object({
   refundAmount: Joi.number().min(0).optional().messages({
     "number.min": "Refund amount must be positive or zero",
   }),
-  paymentNote: Joi.string().optional().allow("", null),
 });
 
 export const addPaymentSchema = Joi.object({
   type: Joi.string()
-    .valid("ADVANCE", "RENT_REMAINING", "REFUND")
+    .valid("ADVANCE", "PAYMENT_RECEIVED", "REFUND")
     .required()
     .messages({
       "any.only":
-        "Payment type must be one of: ADVANCE, RENT_REMAINING, REFUND",
+        "Payment type must be one of: ADVANCE, PAYMENT_RECEIVED, REFUND",
       "any.required": "Payment type is required",
     }),
   amount: Joi.number().min(0).required().messages({
