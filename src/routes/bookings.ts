@@ -59,4 +59,10 @@ router.post(
   (req, res) => bookingController.addPayment(req, res)
 );
 
+router.get(
+  "/:id/preview-cancellation-refund",
+  validateParams(getBookingParamsSchema),
+  (req, res) => bookingController.previewCancellationRefund(req, res)
+);
+
 export default router;

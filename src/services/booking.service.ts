@@ -1,6 +1,14 @@
 import mongoose from "mongoose";
-import { Booking, BookingStatus, PaymentType } from "../models/Booking";
+import {
+  Booking,
+  IBooking,
+  BookingStatus,
+  PaymentType,
+} from "../models/Booking";
 import { Product } from "../models/Product";
+import { OrderService } from "./order.service";
+
+const orderService = new OrderService();
 
 export interface BookingConflict {
   bookingId: string;
@@ -20,10 +28,9 @@ export interface CheckConflictsData {
 
 export interface CreateBookingData {
   orgId: string;
+  orderId: string; // Required - all bookings must belong to an order
   productId: string;
   categoryId?: string;
-  customerName: string;
-  customerPhone?: string;
   fromDateTime: Date;
   toDateTime: Date;
   decidedRent: number;
@@ -34,8 +41,6 @@ export interface CreateBookingData {
 
 export interface UpdateBookingData {
   categoryId?: string | null;
-  customerName?: string;
-  customerPhone?: string;
   fromDateTime?: Date;
   toDateTime?: Date;
   decidedRent?: number;
@@ -65,13 +70,16 @@ export class BookingService {
     fromDateTime: Date,
     toDateTime: Date,
     excludeId?: string
-  ): Promise<Booking[]> {
+  ): Promise<IBooking[]> {
     const query: any = {
       orgId,
       productId,
       status: { $ne: "CANCELLED" },
       $or: [
-        { fromDateTime: { $lt: toDateTime }, toDateTime: { $gt: fromDateTime } },
+        {
+          fromDateTime: { $lt: toDateTime },
+          toDateTime: { $gt: fromDateTime },
+        },
       ],
     };
 
@@ -79,11 +87,13 @@ export class BookingService {
       query._id = { $ne: excludeId };
     }
 
-    return await Booking.find(query);
+    const bookings = await Booking.find(query);
+    return bookings;
   }
 
   async checkConflicts(data: CheckConflictsData): Promise<BookingConflict[]> {
-    const { orgId, productId, fromDateTime, toDateTime, excludeBookingId } = data;
+    const { orgId, productId, fromDateTime, toDateTime, excludeBookingId } =
+      data;
 
     const conflicts = await this.hasOverlap(
       orgId,
@@ -93,9 +103,15 @@ export class BookingService {
       excludeBookingId
     );
 
-    return conflicts.map((c) => ({
+    // Populate order to get customerName
+    const conflictsWithOrder = await Booking.populate(conflicts, {
+      path: "orderId",
+      select: "customerName",
+    });
+
+    return conflictsWithOrder.map((c) => ({
       bookingId: c._id.toString(),
-      customerName: c.customerName,
+      customerName: (c.orderId as any)?.customerName || "Unknown",
       fromDateTime: c.fromDateTime.toISOString(),
       toDateTime: c.toDateTime.toISOString(),
       status: c.status,
@@ -143,13 +159,15 @@ export class BookingService {
     return await Booking.find(query)
       .populate("productId")
       .populate("categoryId")
+      .populate("orderId", "customerName customerPhone")
       .sort({ fromDateTime: 1 });
   }
 
   async getBookingById(id: string, orgId: string) {
     const booking = await Booking.findOne({ _id: id, orgId })
       .populate("productId")
-      .populate("categoryId");
+      .populate("categoryId")
+      .populate("orderId", "customerName customerPhone");
 
     if (!booking) {
       throw new Error("Booking not found");
@@ -159,12 +177,13 @@ export class BookingService {
   }
 
   async createBooking(data: CreateBookingData) {
+    // Note: This method is deprecated. Bookings should be created through OrderService.addBookingToOrder
+    // This is kept for backwards compatibility but requires orderId
     const {
       orgId,
+      orderId,
       productId,
       categoryId,
-      customerName,
-      customerPhone,
       fromDateTime,
       toDateTime,
       decidedRent,
@@ -182,12 +201,26 @@ export class BookingService {
     const from = new Date(fromDateTime);
     const to = new Date(toDateTime);
 
-    // Check for conflicts
-    const conflicts = await this.hasOverlap(orgId, productId, from, to);
+    // Check for conflicts (excluding bookings in the same order)
+    const existingBookings = await Booking.find({ orderId });
+    const conflicts = await Booking.find({
+      orgId,
+      productId,
+      status: { $ne: "CANCELLED" },
+      _id: { $nin: existingBookings.map((b) => b._id) },
+      $or: [{ fromDateTime: { $lt: to }, toDateTime: { $gt: from } }],
+    });
+
     if (conflicts.length > 0 && !overrideConflicts) {
-      const conflictDetails = conflicts.map((c) => ({
+      // Populate order to get customer name for conflicts
+      const conflictsWithOrder = await Booking.populate(conflicts, {
+        path: "orderId",
+        select: "customerName",
+      });
+
+      const conflictDetails = conflictsWithOrder.map((c: any) => ({
         bookingId: c._id.toString(),
-        customerName: c.customerName,
+        customerName: c.orderId?.customerName || "Unknown",
         fromDateTime: c.fromDateTime.toISOString(),
         toDateTime: c.toDateTime.toISOString(),
         status: c.status,
@@ -199,10 +232,9 @@ export class BookingService {
 
     const booking = await Booking.create({
       orgId,
+      orderId,
       productId,
       categoryId: categoryId || product.categoryId || undefined,
-      customerName,
-      customerPhone,
       fromDateTime: from,
       toDateTime: to,
       productDefaultRent: product.defaultRent,
@@ -212,14 +244,17 @@ export class BookingService {
       status: "BOOKED",
       isConflictOverridden: conflicts.length > 0,
       additionalItemsDescription,
-      payments: [
-        {
-          type: "ADVANCE",
-          amount: advanceAmount,
-          at: new Date(),
-          note: "Advance on booking",
-        },
-      ],
+      payments:
+        advanceAmount > 0
+          ? [
+              {
+                type: "ADVANCE",
+                amount: advanceAmount,
+                at: new Date(),
+                note: "Advance on booking",
+              },
+            ]
+          : [],
     });
 
     return booking;
@@ -245,9 +280,15 @@ export class BookingService {
       );
 
       if (conflicts.length > 0 && !data.overrideConflicts) {
-        const conflictDetails = conflicts.map((c) => ({
+        // Populate order to get customer name for conflicts
+        const conflictsWithOrder = await Booking.populate(conflicts, {
+          path: "orderId",
+          select: "customerName",
+        });
+
+        const conflictDetails = conflictsWithOrder.map((c: any) => ({
           bookingId: c._id.toString(),
-          customerName: c.customerName,
+          customerName: c.orderId?.customerName || "Unknown",
           fromDateTime: c.fromDateTime.toISOString(),
           toDateTime: c.toDateTime.toISOString(),
           status: c.status,
@@ -260,15 +301,13 @@ export class BookingService {
       existing.isConflictOverridden = conflicts.length > 0;
     }
 
-    // Update other fields
+    // Update other fields (customer info is in order, not booking)
     if (data.categoryId !== undefined) {
-      existing.categoryId = data.categoryId || null;
-    }
-    if (data.customerName) {
-      existing.customerName = data.customerName;
-    }
-    if (data.customerPhone !== undefined) {
-      existing.customerPhone = data.customerPhone;
+      if (data.categoryId) {
+        existing.categoryId = new mongoose.Types.ObjectId(data.categoryId);
+      } else {
+        existing.categoryId = undefined;
+      }
     }
     if (typeof data.decidedRent === "number") {
       existing.decidedRent = data.decidedRent;
@@ -276,7 +315,9 @@ export class BookingService {
     if (typeof data.advanceAmount === "number") {
       existing.advanceAmount = data.advanceAmount;
       // Update advance payment if it exists
-      const advancePayment = existing.payments.find((p) => p.type === "ADVANCE");
+      const advancePayment = existing.payments.find(
+        (p) => p.type === "ADVANCE"
+      );
       if (advancePayment) {
         advancePayment.amount = data.advanceAmount;
       } else {
@@ -305,6 +346,19 @@ export class BookingService {
 
     const updated = await existing.save();
     await updated.populate("categoryId");
+    await updated.populate("orderId", "customerName customerPhone");
+
+    // Update order status after booking update
+    if (updated.orderId) {
+      const { OrderService } = await import("./order.service");
+      const orderService = new OrderService();
+      const orderIdStr =
+        typeof updated.orderId === "string"
+          ? updated.orderId
+          : (updated.orderId as any)._id.toString();
+      await orderService.updateOrderStatus(orderIdStr);
+    }
+
     return updated;
   }
 
@@ -313,19 +367,81 @@ export class BookingService {
     orgId: string,
     status: BookingStatus,
     paymentAmount?: number,
-    paymentNote?: string
+    paymentNote?: string,
+    refundAmount?: number
   ) {
     const booking = await Booking.findOne({ _id: id, orgId });
     if (!booking) {
       throw new Error("Booking not found");
     }
 
+    const previousStatus = booking.status;
+
+    // If cancelling booking, validate that booking is in BOOKED status
+    if (status === "CANCELLED" && previousStatus !== "CANCELLED") {
+      // Only allow cancellation if booking is in BOOKED status
+      if (previousStatus !== "BOOKED") {
+        throw new Error(
+          `Cannot cancel booking. Booking must be in "BOOKED" status to cancel. Current status: ${previousStatus}`
+        );
+      }
+
+      // For cancellation, use refundAmount parameter if provided
+      // If not provided, it will be calculated automatically
+      const cancellationRefundAmount =
+        refundAmount !== undefined && refundAmount >= 0
+          ? refundAmount
+          : undefined;
+
+      const refundInfo = await orderService.handleBookingCancellation(
+        id,
+        orgId,
+        cancellationRefundAmount
+      );
+      // The booking status is already set to CANCELLED by handleBookingCancellation
+      const booking = await Booking.findById(id)
+        .populate("productId")
+        .populate("categoryId")
+        .populate("orderId");
+
+      // Attach refund info to booking object for frontend
+      (booking as any).cancellationInfo = refundInfo;
+      return booking;
+    }
+
     booking.status = status;
 
     // If payment amount is provided for ISSUE or RETURN, add it as a payment
     if (paymentAmount !== undefined && paymentAmount > 0) {
+      // Calculate current remaining amount before adding payment
+      const currentTotalPaid = booking.payments.reduce((sum, p) => {
+        if (p.type === "REFUND") return sum - p.amount;
+        return sum + p.amount;
+      }, 0);
+      const currentRemaining = booking.decidedRent - currentTotalPaid;
+
+      // Prevent overpayment - only allow payment up to remaining amount
+      if (currentRemaining <= 0) {
+        throw new Error(
+          "Booking is already fully paid. No additional payment needed."
+        );
+      }
+
+      // Don't allow payment more than remaining amount
+      const allowedPaymentAmount = Math.min(paymentAmount, currentRemaining);
+
+      if (allowedPaymentAmount < paymentAmount) {
+        throw new Error(
+          `Payment amount (₹${paymentAmount.toFixed(
+            2
+          )}) exceeds remaining amount (₹${currentRemaining.toFixed(
+            2
+          )}). Maximum allowed: ₹${currentRemaining.toFixed(2)}.`
+        );
+      }
+
       let paymentType: PaymentType = "RENT_REMAINING";
-      
+
       if (status === "ISSUED") {
         paymentType = "RENT_REMAINING";
       } else if (status === "RETURNED") {
@@ -335,9 +451,11 @@ export class BookingService {
       // Add payment entry
       booking.payments.push({
         type: paymentType,
-        amount: paymentAmount,
+        amount: allowedPaymentAmount,
         at: new Date(),
-        note: paymentNote || (status === "ISSUED" ? "Payment on issue" : "Payment on return"),
+        note:
+          paymentNote ||
+          (status === "ISSUED" ? "Payment on issue" : "Payment on return"),
       });
 
       // Recalculate remaining amount
@@ -348,7 +466,21 @@ export class BookingService {
       booking.remainingAmount = booking.decidedRent - totalPaid;
     }
 
-    return await booking.save();
+    const savedBooking = await booking.save();
+
+    // Populate order info before returning
+    await savedBooking.populate("orderId", "customerName customerPhone");
+
+    // Update order status after booking status change
+    if (savedBooking.orderId) {
+      const orderIdStr =
+        typeof savedBooking.orderId === "string"
+          ? savedBooking.orderId
+          : (savedBooking.orderId as any)._id.toString();
+      await orderService.updateOrderStatus(orderIdStr);
+    }
+
+    return savedBooking;
   }
 
   async addPayment(id: string, orgId: string, paymentData: AddPaymentData) {
@@ -357,11 +489,37 @@ export class BookingService {
       throw new Error("Booking not found");
     }
 
+    // Calculate current remaining amount before adding new payment
+    const currentTotalPaid =
+      booking.payments
+        .filter((p) => p.type === "ADVANCE" || p.type === "RENT_REMAINING")
+        .reduce((sum, p) => sum + p.amount, 0) -
+      booking.payments
+        .filter((p) => p.type === "REFUND")
+        .reduce((sum, p) => sum + p.amount, 0);
+    const currentRemaining = booking.decidedRent - currentTotalPaid;
+
+    // Prevent overpayment - only allow payment if there's remaining amount
+    if (currentRemaining <= 0) {
+      throw new Error(
+        "Booking is already fully paid. No additional payment needed."
+      );
+    }
+
+    // If trying to pay more than remaining, adjust to remaining amount only
+    const allowedPaymentAmount = Math.min(paymentData.amount, currentRemaining);
+
     booking.payments.push({
       type: paymentData.type,
-      amount: paymentData.amount,
+      amount: allowedPaymentAmount,
       at: new Date(),
-      note: paymentData.note,
+      note:
+        paymentData.note ||
+        (allowedPaymentAmount < paymentData.amount
+          ? `Payment adjusted from ₹${paymentData.amount.toFixed(
+              2
+            )} to remaining amount`
+          : undefined),
     });
 
     // Recalculate remaining amount
@@ -375,7 +533,22 @@ export class BookingService {
 
     booking.remainingAmount = booking.decidedRent - totalPaid;
 
-    return await booking.save();
+    const savedBooking = await booking.save();
+
+    // Populate order info
+    await savedBooking.populate("orderId", "customerName customerPhone");
+
+    // Update order status after payment
+    if (savedBooking.orderId) {
+      const { OrderService } = await import("./order.service");
+      const orderService = new OrderService();
+      const orderIdStr =
+        typeof savedBooking.orderId === "string"
+          ? savedBooking.orderId
+          : (savedBooking.orderId as any)._id.toString();
+      await orderService.updateOrderStatus(orderIdStr);
+    }
+
+    return savedBooking;
   }
 }
-

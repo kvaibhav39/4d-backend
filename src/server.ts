@@ -8,11 +8,13 @@ import "./models/Organization";
 import "./models/User";
 import "./models/Category";
 import "./models/Product";
+import "./models/Order";
 import "./models/Booking";
 
 import authRoutes from "./routes/auth";
 import categoryRoutes from "./routes/categories";
 import productRoutes from "./routes/products";
+import orderRoutes from "./routes/orders";
 import bookingRoutes from "./routes/bookings";
 import dashboardRoutes from "./routes/dashboard";
 
@@ -52,6 +54,7 @@ app.get("/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/orders", orderRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 

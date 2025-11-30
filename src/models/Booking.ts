@@ -13,10 +13,9 @@ export interface IPaymentEntry {
 
 export interface IBooking extends Document {
   orgId: mongoose.Types.ObjectId;
+  orderId: mongoose.Types.ObjectId; // Reference to Order
   productId: mongoose.Types.ObjectId;
   categoryId?: mongoose.Types.ObjectId;
-  customerName: string;
-  customerPhone?: string;
   fromDateTime: Date;
   toDateTime: Date;
   productDefaultRent: number;
@@ -42,10 +41,9 @@ const PaymentSchema = new Schema<IPaymentEntry>(
 const BookingSchema = new Schema<IBooking>(
   {
     orgId: { type: Schema.Types.ObjectId, ref: "Organization", required: true },
+    orderId: { type: Schema.Types.ObjectId, ref: "Order", required: true },
     productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
     categoryId: { type: Schema.Types.ObjectId, ref: "Category" },
-    customerName: { type: String, required: true },
-    customerPhone: { type: String },
     fromDateTime: { type: Date, required: true },
     toDateTime: { type: Date, required: true },
     productDefaultRent: { type: Number, required: true },
@@ -65,6 +63,7 @@ const BookingSchema = new Schema<IBooking>(
 );
 
 BookingSchema.index({ orgId: 1, productId: 1, fromDateTime: 1, toDateTime: 1 });
+BookingSchema.index({ orderId: 1 });
 
 export const Booking = mongoose.model<IBooking>("Booking", BookingSchema);
 

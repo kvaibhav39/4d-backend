@@ -12,45 +12,54 @@ export const checkConflictsSchema = Joi.object({
     "date.format": "From date time must be in ISO format",
     "any.required": "From date time is required",
   }),
-  toDateTime: Joi.date().iso().greater(Joi.ref("fromDateTime")).required().messages({
-    "date.base": "To date time must be a valid date",
-    "date.format": "To date time must be in ISO format",
-    "date.greater": "To date time must be after from date time",
-    "any.required": "To date time is required",
-  }),
+  toDateTime: Joi.date()
+    .iso()
+    .greater(Joi.ref("fromDateTime"))
+    .required()
+    .messages({
+      "date.base": "To date time must be a valid date",
+      "date.format": "To date time must be in ISO format",
+      "date.greater": "To date time must be after from date time",
+      "any.required": "To date time is required",
+    }),
   excludeBookingId: Joi.string().pattern(objectIdPattern).optional().messages({
     "string.pattern.base": "Invalid booking ID format",
   }),
 });
 
 export const createBookingSchema = Joi.object({
+  // Note: Direct booking creation is deprecated. Bookings should be created through orders.
+  // This schema is kept for backwards compatibility but bookings now require orderId.
+  orderId: Joi.string().pattern(objectIdPattern).required().messages({
+    "string.pattern.base": "Invalid order ID format",
+    "any.required": "Order ID is required - bookings must belong to an order",
+  }),
   productId: Joi.string().pattern(objectIdPattern).required().messages({
     "string.pattern.base": "Invalid product ID format",
     "any.required": "Product ID is required",
   }),
-  categoryId: Joi.string().pattern(objectIdPattern).allow("", null).optional().messages({
-    "string.pattern.base": "Invalid category ID format",
-  }),
-  customerName: Joi.string().trim().min(1).max(200).required().messages({
-    "string.empty": "Customer name cannot be empty",
-    "string.min": "Customer name must be at least 1 character",
-    "string.max": "Customer name must not exceed 200 characters",
-    "any.required": "Customer name is required",
-  }),
-  customerPhone: Joi.string().trim().max(20).allow("", null).optional().messages({
-    "string.max": "Customer phone must not exceed 20 characters",
-  }),
+  categoryId: Joi.string()
+    .pattern(objectIdPattern)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.pattern.base": "Invalid category ID format",
+    }),
   fromDateTime: Joi.date().iso().required().messages({
     "date.base": "From date time must be a valid date",
     "date.format": "From date time must be in ISO format",
     "any.required": "From date time is required",
   }),
-  toDateTime: Joi.date().iso().greater(Joi.ref("fromDateTime")).required().messages({
-    "date.base": "To date time must be a valid date",
-    "date.format": "To date time must be in ISO format",
-    "date.greater": "To date time must be after from date time",
-    "any.required": "To date time is required",
-  }),
+  toDateTime: Joi.date()
+    .iso()
+    .greater(Joi.ref("fromDateTime"))
+    .required()
+    .messages({
+      "date.base": "To date time must be a valid date",
+      "date.format": "To date time must be in ISO format",
+      "date.greater": "To date time must be after from date time",
+      "any.required": "To date time is required",
+    }),
   decidedRent: Joi.number().min(0).required().messages({
     "number.base": "Decided rent must be a number",
     "number.min": "Decided rent must be 0 or greater",
@@ -61,24 +70,27 @@ export const createBookingSchema = Joi.object({
     "number.min": "Advance amount must be 0 or greater",
     "any.required": "Advance amount is required",
   }),
-  additionalItemsDescription: Joi.string().trim().max(1000).allow("", null).optional().messages({
-    "string.max": "Additional items description must not exceed 1000 characters",
-  }),
+  additionalItemsDescription: Joi.string()
+    .trim()
+    .max(1000)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.max":
+        "Additional items description must not exceed 1000 characters",
+    }),
   overrideConflicts: Joi.boolean().optional(),
 });
 
 export const updateBookingSchema = Joi.object({
-  categoryId: Joi.string().pattern(objectIdPattern).allow("", null).optional().messages({
-    "string.pattern.base": "Invalid category ID format",
-  }),
-  customerName: Joi.string().trim().min(1).max(200).optional().messages({
-    "string.empty": "Customer name cannot be empty",
-    "string.min": "Customer name must be at least 1 character",
-    "string.max": "Customer name must not exceed 200 characters",
-  }),
-  customerPhone: Joi.string().trim().max(20).allow("", null).optional().messages({
-    "string.max": "Customer phone must not exceed 20 characters",
-  }),
+  categoryId: Joi.string()
+    .pattern(objectIdPattern)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.pattern.base": "Invalid category ID format",
+    }),
+  // Customer info is in order, not booking - removed customerName and customerPhone
   fromDateTime: Joi.date().iso().optional().messages({
     "date.base": "From date time must be a valid date",
     "date.format": "From date time must be in ISO format",
@@ -95,9 +107,15 @@ export const updateBookingSchema = Joi.object({
     "number.base": "Advance amount must be a number",
     "number.min": "Advance amount must be 0 or greater",
   }),
-  additionalItemsDescription: Joi.string().trim().max(1000).allow("", null).optional().messages({
-    "string.max": "Additional items description must not exceed 1000 characters",
-  }),
+  additionalItemsDescription: Joi.string()
+    .trim()
+    .max(1000)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.max":
+        "Additional items description must not exceed 1000 characters",
+    }),
   overrideConflicts: Joi.boolean().optional(),
 }).custom((value, helpers) => {
   if (value.fromDateTime && value.toDateTime) {
@@ -117,7 +135,10 @@ export const updateBookingStatusSchema = Joi.object({
       "any.required": "Status is required",
     }),
   paymentAmount: Joi.number().min(0).optional().messages({
-    "number.min": "Payment amount must be positive",
+    "number.min": "Payment amount must be positive or zero",
+  }),
+  refundAmount: Joi.number().min(0).optional().messages({
+    "number.min": "Refund amount must be positive or zero",
   }),
   paymentNote: Joi.string().optional().allow("", null),
 });
@@ -127,7 +148,8 @@ export const addPaymentSchema = Joi.object({
     .valid("ADVANCE", "RENT_REMAINING", "REFUND")
     .required()
     .messages({
-      "any.only": "Payment type must be one of: ADVANCE, RENT_REMAINING, REFUND",
+      "any.only":
+        "Payment type must be one of: ADVANCE, RENT_REMAINING, REFUND",
       "any.required": "Payment type is required",
     }),
   amount: Joi.number().min(0).required().messages({
@@ -166,4 +188,3 @@ export const listBookingsQuerySchema = Joi.object({
     "string.pattern.base": "Invalid product ID format",
   }),
 });
-

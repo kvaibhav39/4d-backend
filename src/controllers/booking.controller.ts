@@ -9,7 +9,8 @@ export class BookingController {
   async checkConflicts(req: AuthRequest, res: Response) {
     try {
       const orgId = req.user!.orgId;
-      const { productId, fromDateTime, toDateTime, excludeBookingId } = req.body;
+      const { productId, fromDateTime, toDateTime, excludeBookingId } =
+        req.body;
 
       const conflicts = await bookingService.checkConflicts({
         orgId,
@@ -64,54 +65,13 @@ export class BookingController {
 
   async createBooking(req: AuthRequest, res: Response) {
     try {
-      const orgId = req.user!.orgId;
-      const {
-        productId,
-        categoryId,
-        customerName,
-        customerPhone,
-        fromDateTime,
-        toDateTime,
-        decidedRent,
-        advanceAmount,
-        additionalItemsDescription,
-        overrideConflicts,
-      } = req.body;
-
-      const booking = await bookingService.createBooking({
-        orgId,
-        productId,
-        categoryId,
-        customerName,
-        customerPhone,
-        fromDateTime: new Date(fromDateTime),
-        toDateTime: new Date(toDateTime),
-        decidedRent,
-        advanceAmount,
-        additionalItemsDescription,
-        overrideConflicts,
+      // Note: Direct booking creation is deprecated. Bookings should be created through orders.
+      // This endpoint is kept for backwards compatibility but requires orderId.
+      return res.status(400).json({
+        message:
+          "Bookings must be created through orders. Please use POST /orders/:id/bookings",
       });
-
-      res.status(201).json(booking);
     } catch (error: any) {
-      if (error.message === "Product not found for this org") {
-        return res.status(400).json({ message: error.message });
-      }
-      if (error.message === "CONFLICT") {
-        // Get conflicts for response
-        const orgId = req.user!.orgId;
-        const { productId, fromDateTime, toDateTime } = req.body;
-        const conflicts = await bookingService.checkConflicts({
-          orgId,
-          productId,
-          fromDateTime: new Date(fromDateTime),
-          toDateTime: new Date(toDateTime),
-        });
-        return res.status(409).json({
-          message: "Conflicting bookings found",
-          conflicts,
-        });
-      }
       console.error("Create booking error", error);
       res.status(500).json({ message: "Internal server error" });
     }
@@ -123,8 +83,6 @@ export class BookingController {
       const { id } = req.params;
       const {
         categoryId,
-        customerName,
-        customerPhone,
         fromDateTime,
         toDateTime,
         decidedRent,
@@ -135,15 +93,16 @@ export class BookingController {
 
       const updateData: any = {};
       if (categoryId !== undefined) updateData.categoryId = categoryId || null;
-      if (customerName) updateData.customerName = customerName;
-      if (customerPhone !== undefined) updateData.customerPhone = customerPhone;
+      // Customer info is in order, not booking - removed customerName and customerPhone
       if (fromDateTime) updateData.fromDateTime = new Date(fromDateTime);
       if (toDateTime) updateData.toDateTime = new Date(toDateTime);
       if (typeof decidedRent === "number") updateData.decidedRent = decidedRent;
-      if (typeof advanceAmount === "number") updateData.advanceAmount = advanceAmount;
+      if (typeof advanceAmount === "number")
+        updateData.advanceAmount = advanceAmount;
       if (additionalItemsDescription !== undefined)
         updateData.additionalItemsDescription = additionalItemsDescription;
-      if (overrideConflicts !== undefined) updateData.overrideConflicts = overrideConflicts;
+      if (overrideConflicts !== undefined)
+        updateData.overrideConflicts = overrideConflicts;
 
       const booking = await bookingService.updateBooking(id, orgId, updateData);
       res.json(booking);
@@ -185,21 +144,65 @@ export class BookingController {
     try {
       const orgId = req.user!.orgId;
       const { id } = req.params;
-      const { status, paymentAmount, paymentNote } = req.body;
+      const { status, paymentAmount, paymentNote, refundAmount } = req.body;
 
       const booking = await bookingService.updateBookingStatus(
         id,
         orgId,
         status,
         paymentAmount,
-        paymentNote
+        paymentNote,
+        refundAmount
       );
       res.json(booking);
     } catch (error: any) {
       if (error.message === "Booking not found") {
         return res.status(404).json({ message: error.message });
       }
+      if (
+        error.message ===
+        "Booking is already fully paid. No additional payment needed."
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
+      if (error.message.includes("exceeds remaining amount")) {
+        return res.status(400).json({ message: error.message });
+      }
+      if (
+        error.message.includes("Cannot cancel booking") ||
+        error.message.includes('must be in "BOOKED" status')
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
+      if (
+        error.message.includes("Refund amount") ||
+        error.message.includes("cannot exceed maximum refund")
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
       console.error("Update status error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async previewCancellationRefund(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const { id } = req.params;
+
+      const { OrderService } = await import("../services/order.service");
+      const orderService = new OrderService();
+      const refundInfo = await orderService.previewBookingCancellationRefund(
+        id,
+        orgId
+      );
+
+      res.json(refundInfo);
+    } catch (error: any) {
+      if (error.message === "Booking not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      console.error("Preview cancellation refund error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -221,9 +224,14 @@ export class BookingController {
       if (error.message === "Booking not found") {
         return res.status(404).json({ message: error.message });
       }
+      if (
+        error.message ===
+        "Booking is already fully paid. No additional payment needed."
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
       console.error("Add payment error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
 }
-
