@@ -50,19 +50,19 @@ export class DashboardService {
     const startDate = date
       ? new Date(date)
       : new Date(new Date().setHours(0, 0, 0, 0));
+    startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 1);
+    endDate.setHours(0, 0, 0, 0);
 
+    // Filter by createdAt (booking creation date) to show bookings created on the selected date
     return await Booking.find({
       orgId,
-      $or: [
-        { fromDateTime: { $gte: startDate, $lt: endDate } },
-        { toDateTime: { $gte: startDate, $lt: endDate } },
-      ],
+      createdAt: { $gte: startDate, $lt: endDate },
     })
       .populate("productId")
       .populate("categoryId")
-      .sort({ fromDateTime: 1 });
+      .sort({ createdAt: -1 }); // Sort by creation date, newest first
   }
 
   async getRecentBookings(orgId: string, days: number = 5) {
@@ -80,24 +80,26 @@ export class DashboardService {
       .sort({ createdAt: -1 });
   }
 
-  async getUpcomingBookings(orgId: string, days: number = 7) {
+  async getCustomerPickups(orgId: string, days: number = 7) {
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + days);
     endDate.setHours(23, 59, 59, 999);
 
+    // Filter by fromDateTime (pickup date) to show products ready for customer pickup
+    // Only show bookings with BOOKED status (items not yet issued to customers)
     return await Booking.find({
       orgId,
       fromDateTime: { $gte: startDate, $lte: endDate },
-      status: { $in: ["BOOKED", "ISSUED"] }, // Only show active bookings
+      status: "BOOKED", // Only show BOOKED status (not yet issued)
     })
       .populate("productId")
       .populate("categoryId")
       .sort({ fromDateTime: 1 }); // Sort by fromDateTime ascending (earliest first)
   }
 
-  async getReadyForPickupBookings(orgId: string, days: number = 7) {
+  async getCustomerReturns(orgId: string, days: number = 7) {
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
     const endDate = new Date();
@@ -105,11 +107,11 @@ export class DashboardService {
     endDate.setHours(23, 59, 59, 999);
 
     // Filter by toDateTime (return date) to show products ready to return
-    // Only show active bookings (BOOKED or ISSUED) that are due to be returned
+    // Only show bookings with ISSUED status (items already issued to customers, now due to be returned)
     return await Booking.find({
       orgId,
       toDateTime: { $gte: startDate, $lte: endDate },
-      status: { $in: ["BOOKED", "ISSUED"] }, // Only show active bookings
+      status: "ISSUED", // Only show ISSUED status (items already with customers)
     })
       .populate("productId")
       .populate("categoryId")

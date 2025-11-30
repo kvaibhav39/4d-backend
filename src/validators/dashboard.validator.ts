@@ -23,7 +23,7 @@ export const dashboardRecentBookingsQuerySchema = Joi.object({
   }),
 });
 
-export const dashboardUpcomingBookingsQuerySchema = Joi.object({
+export const dashboardCustomerPickupsQuerySchema = Joi.object({
   days: Joi.number().integer().min(1).max(30).optional().messages({
     "number.base": "Days must be a number",
     "number.integer": "Days must be an integer",
@@ -32,7 +32,7 @@ export const dashboardUpcomingBookingsQuerySchema = Joi.object({
   }),
 });
 
-export const dashboardReadyForPickupBookingsQuerySchema = Joi.object({
+export const dashboardCustomerReturnsQuerySchema = Joi.object({
   days: Joi.number().integer().min(1).max(30).optional().messages({
     "number.base": "Days must be a number",
     "number.integer": "Days must be an integer",

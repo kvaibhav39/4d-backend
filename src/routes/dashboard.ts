@@ -5,8 +5,8 @@ import {
   dashboardStatsQuerySchema,
   dashboardBookingsQuerySchema,
   dashboardRecentBookingsQuerySchema,
-  dashboardUpcomingBookingsQuerySchema,
-  dashboardReadyForPickupBookingsQuerySchema,
+  dashboardCustomerPickupsQuerySchema,
+  dashboardCustomerReturnsQuerySchema,
 } from "../validators/dashboard.validator";
 import { DashboardController } from "../controllers/dashboard.controller";
 
@@ -32,15 +32,15 @@ router.get(
 );
 
 router.get(
-  "/upcoming-bookings",
-  validateQuery(dashboardUpcomingBookingsQuerySchema),
-  (req, res) => dashboardController.getUpcomingBookings(req, res)
+  "/customer-pickups",
+  validateQuery(dashboardCustomerPickupsQuerySchema),
+  (req, res) => dashboardController.getCustomerPickups(req, res)
 );
 
 router.get(
-  "/ready-for-pickup",
-  validateQuery(dashboardReadyForPickupBookingsQuerySchema),
-  (req, res) => dashboardController.getReadyForPickupBookings(req, res)
+  "/customer-returns",
+  validateQuery(dashboardCustomerReturnsQuerySchema),
+  (req, res) => dashboardController.getCustomerReturns(req, res)
 );
 
 export default router;
