@@ -64,6 +64,7 @@ export class DashboardService {
     })
       .populate("productId")
       .populate("categoryId")
+      .populate("orderId", "customerName customerPhone")
       .sort({ createdAt: -1 }); // Sort by creation date, newest first
   }
 
@@ -79,6 +80,7 @@ export class DashboardService {
     })
       .populate("productId")
       .populate("categoryId")
+      .populate("orderId", "customerName customerPhone")
       .sort({ createdAt: -1 });
   }
 
@@ -98,6 +100,7 @@ export class DashboardService {
     })
       .populate("productId")
       .populate("categoryId")
+      .populate("orderId", "customerName customerPhone")
       .sort({ fromDateTime: 1 }); // Sort by fromDateTime ascending (earliest first)
   }
 
@@ -117,6 +120,7 @@ export class DashboardService {
     })
       .populate("productId")
       .populate("categoryId")
+      .populate("orderId", "customerName customerPhone")
       .sort({ toDateTime: 1 }); // Sort by return date ascending (earliest first)
   }
 }
