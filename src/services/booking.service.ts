@@ -360,6 +360,17 @@ export class BookingService {
       throw new Error("Booking not found");
     }
 
+    // Prevent editing bookings that are already issued or returned
+    if (
+      existing.status === "ISSUED" ||
+      existing.status === "RETURNED" ||
+      existing.status === "CANCELLED"
+    ) {
+      throw new Error(
+        `Cannot edit booking. Booking with status "${existing.status}" cannot be edited.`
+      );
+    }
+
     // Handle date/time updates and conflict checking
     if (data.fromDateTime || data.toDateTime) {
       const from = new Date(data.fromDateTime || existing.fromDateTime);

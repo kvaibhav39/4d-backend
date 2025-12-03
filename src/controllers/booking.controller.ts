@@ -111,6 +111,12 @@ export class BookingController {
       if (error.message === "Booking not found") {
         return res.status(404).json({ message: error.message });
       }
+      if (
+        error.message.includes("Cannot edit booking") &&
+        error.message.includes("status")
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
       if (error.message === "CONFLICT") {
         // Get conflicts for response
         try {
