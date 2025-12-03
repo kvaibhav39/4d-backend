@@ -30,7 +30,7 @@ export class BookingController {
   async listBookings(req: AuthRequest, res: Response) {
     try {
       const orgId = req.user!.orgId;
-      const { status, startDate, endDate, productId } = req.query;
+      const { status, startDate, endDate, productId, search } = req.query;
 
       const bookings = await bookingService.listBookings({
         orgId,
@@ -38,6 +38,7 @@ export class BookingController {
         startDate: startDate as string | undefined,
         endDate: endDate as string | undefined,
         productId: productId as string | undefined,
+        search: search as string | undefined,
       });
 
       res.json(bookings);

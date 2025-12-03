@@ -189,4 +189,7 @@ export const listOrdersQuerySchema = Joi.object({
     "date.base": "End date must be a valid date",
     "date.format": "End date must be in ISO format",
   }),
+  search: Joi.string().trim().max(200).optional().allow("").messages({
+    "string.max": "Search query must not exceed 200 characters",
+  }),
 });

@@ -41,13 +41,14 @@ export class OrderController {
   async listOrders(req: AuthRequest, res: Response) {
     try {
       const orgId = req.user!.orgId;
-      const { status, startDate, endDate } = req.query;
+      const { status, startDate, endDate, search } = req.query;
 
       const orders = await orderService.listOrders({
         orgId,
         status: status as OrderStatus | undefined,
         startDate: startDate as string | undefined,
         endDate: endDate as string | undefined,
+        search: search as string | undefined,
       });
 
       res.json(orders);

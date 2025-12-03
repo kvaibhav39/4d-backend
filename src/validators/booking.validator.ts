@@ -204,4 +204,7 @@ export const listBookingsQuerySchema = Joi.object({
   productId: Joi.string().pattern(objectIdPattern).optional().messages({
     "string.pattern.base": "Invalid product ID format",
   }),
+  search: Joi.string().trim().max(200).optional().allow("").messages({
+    "string.max": "Search query must not exceed 200 characters",
+  }),
 });

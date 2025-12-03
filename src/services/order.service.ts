@@ -31,6 +31,7 @@ export interface ListOrdersFilters {
   status?: OrderStatus;
   startDate?: string;
   endDate?: string;
+  search?: string;
 }
 
 export interface CollectPaymentData {
@@ -209,12 +210,21 @@ export class OrderService {
    * List orders with filters
    */
   async listOrders(filters: ListOrdersFilters) {
-    const { orgId, status, startDate, endDate } = filters;
+    const { orgId, status, startDate, endDate, search } = filters;
 
     const query: any = { orgId };
 
     if (status) {
       query.status = status;
+    }
+
+    if (search && search.trim()) {
+      // Search by customer name or phone number (case-insensitive)
+      const searchTerm = search.trim();
+      query.$or = [
+        { customerName: { $regex: searchTerm, $options: "i" } },
+        { customerPhone: { $regex: searchTerm, $options: "i" } },
+      ];
     }
 
     if (startDate || endDate) {

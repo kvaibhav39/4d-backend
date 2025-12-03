@@ -55,6 +55,7 @@ export interface ListBookingsFilters {
   startDate?: string;
   endDate?: string;
   productId?: string;
+  search?: string;
 }
 
 export interface AddPaymentData {
@@ -119,8 +120,9 @@ export class BookingService {
   }
 
   async listBookings(filters: ListBookingsFilters) {
-    const { orgId, status, startDate, endDate, productId } = filters;
+    const { orgId, status, startDate, endDate, productId, search } = filters;
 
+    // Build base query
     const query: any = { orgId };
     if (status) {
       query.status = status;
@@ -156,6 +158,98 @@ export class BookingService {
       if (query.$or.length === 0) delete query.$or;
     }
 
+    // If search is provided, use aggregation pipeline to search across related collections
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+
+      // First, get all bookings matching the base query
+      const baseBookings = await Booking.find(query)
+        .select("_id orderId productId fromDateTime")
+        .lean();
+
+      if (baseBookings.length === 0) {
+        return [];
+      }
+
+      // Get unique order and product IDs (convert to ObjectId instances)
+      const orderIds = [
+        ...new Set(
+          baseBookings
+            .map((b) => {
+              if (!b.orderId) return null;
+              return typeof b.orderId === "string"
+                ? new mongoose.Types.ObjectId(b.orderId)
+                : b.orderId;
+            })
+            .filter(Boolean)
+        ),
+      ];
+      const productIds = [
+        ...new Set(
+          baseBookings
+            .map((b) => {
+              if (!b.productId) return null;
+              return typeof b.productId === "string"
+                ? new mongoose.Types.ObjectId(b.productId)
+                : b.productId;
+            })
+            .filter(Boolean)
+        ),
+      ];
+
+      // Search in orders and products
+      const { Order } = await import("../models/Order");
+      const { Product } = await import("../models/Product");
+
+      const matchingOrders = await Order.find({
+        _id: { $in: orderIds },
+        $or: [
+          { customerName: { $regex: searchTerm, $options: "i" } },
+          { customerPhone: { $regex: searchTerm, $options: "i" } },
+        ],
+      })
+        .select("_id")
+        .lean();
+
+      const matchingProducts = await Product.find({
+        _id: { $in: productIds },
+        title: { $regex: searchTerm, $options: "i" },
+      })
+        .select("_id")
+        .lean();
+
+      const matchingOrderIds = new Set(
+        matchingOrders.map((o) => o._id.toString())
+      );
+      const matchingProductIds = new Set(
+        matchingProducts.map((p) => p._id.toString())
+      );
+
+      // Filter bookings that match either order or product
+      const matchingBookingIds = baseBookings
+        .filter((b) => {
+          const orderId = b.orderId?.toString();
+          const productId = b.productId?.toString();
+          return (
+            (orderId && matchingOrderIds.has(orderId)) ||
+            (productId && matchingProductIds.has(productId))
+          );
+        })
+        .map((b) => b._id);
+
+      if (matchingBookingIds.length === 0) {
+        return [];
+      }
+
+      // Return full booking documents with population
+      return await Booking.find({ _id: { $in: matchingBookingIds } })
+        .populate("productId")
+        .populate("categoryId")
+        .populate("orderId", "customerName customerPhone")
+        .sort({ fromDateTime: 1 });
+    }
+
+    // No search - use regular query
     return await Booking.find(query)
       .populate("productId")
       .populate("categoryId")
