@@ -8,6 +8,7 @@ import {
   listProductsQuerySchema,
 } from "../validators/product.validator";
 import { ProductController } from "../controllers/product.controller";
+import { upload } from "../middleware/upload";
 
 const router = Router();
 const productController = new ProductController();
@@ -28,6 +29,7 @@ router.get(
 
 router.post(
   "/",
+  upload.single("image"),
   validate(createProductSchema),
   (req, res) => productController.createProduct(req, res)
 );
@@ -35,6 +37,7 @@ router.post(
 router.put(
   "/:id",
   validateParams(getProductParamsSchema),
+  upload.single("image"),
   validate(updateProductSchema),
   (req, res) => productController.updateProduct(req, res)
 );
@@ -43,6 +46,12 @@ router.delete(
   "/:id",
   validateParams(getProductParamsSchema),
   (req, res) => productController.deleteProduct(req, res)
+);
+
+router.post(
+  "/:id/restore",
+  validateParams(getProductParamsSchema),
+  (req, res) => productController.restoreProduct(req, res)
 );
 
 export default router;

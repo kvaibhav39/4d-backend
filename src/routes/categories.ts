@@ -41,4 +41,8 @@ router.delete("/:id", validateParams(getCategoryParamsSchema), (req, res) =>
   categoryController.deleteCategory(req, res)
 );
 
+router.post("/:id/restore", validateParams(getCategoryParamsSchema), (req, res) =>
+  categoryController.restoreCategory(req, res)
+);
+
 export default router;

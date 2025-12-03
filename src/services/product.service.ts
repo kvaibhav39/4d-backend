@@ -10,6 +10,7 @@ export interface CreateProductData {
   defaultRent: number;
   color?: string;
   size?: string;
+  imageUrl?: string;
 }
 
 export interface UpdateProductData {
@@ -20,18 +21,25 @@ export interface UpdateProductData {
   defaultRent?: number;
   color?: string;
   size?: string;
+  imageUrl?: string;
   isActive?: boolean;
 }
 
 export interface ListProductsFilters {
   orgId: string;
   search?: string;
+  includeDeleted?: boolean;
 }
 
 export class ProductService {
   async listProducts(filters: ListProductsFilters) {
-    const { orgId, search } = filters;
-    const query: any = { orgId, isActive: { $ne: false } };
+    const { orgId, search, includeDeleted } = filters;
+    const query: any = { orgId };
+
+    // Only filter by isActive if we don't want to include deleted items
+    if (!includeDeleted) {
+      query.isActive = { $ne: false };
+    }
 
     if (search) {
       query.$or = [
@@ -86,6 +94,7 @@ export class ProductService {
       defaultRent,
       color,
       size,
+      imageUrl,
     } = data;
 
     // Check if product with same code exists
@@ -107,6 +116,7 @@ export class ProductService {
       defaultRent,
       color,
       size,
+      imageUrl,
     });
 
     const populatedProduct = await Product.findById(product._id).populate(
@@ -152,6 +162,7 @@ export class ProductService {
       updateData.defaultRent = data.defaultRent;
     if (data.color !== undefined) updateData.color = data.color;
     if (data.size !== undefined) updateData.size = data.size;
+    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.categoryId !== undefined) {
       updateData.categoryId = data.categoryId || null;
@@ -187,5 +198,19 @@ export class ProductService {
     }
 
     return { message: "Product deactivated" };
+  }
+
+  async restoreProduct(id: string, orgId: string) {
+    const product = await Product.findOneAndUpdate(
+      { _id: id, orgId },
+      { isActive: true },
+      { new: true }
+    );
+
+    if (!product) {
+      throw new Error("Product not found");
+    }
+
+    return { message: "Product restored" };
   }
 }

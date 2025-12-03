@@ -9,8 +9,13 @@ export class CategoryController {
     try {
       const orgId = req.user!.orgId;
       const search = req.query.search as string | undefined;
+      const includeDeleted = req.query.includeDeleted === "true";
 
-      const categories = await categoryService.listCategories({ orgId, search });
+      const categories = await categoryService.listCategories({
+        orgId,
+        search,
+        includeDeleted,
+      });
       res.json(categories);
     } catch (error) {
       console.error("List categories error", error);
@@ -51,7 +56,9 @@ export class CategoryController {
         return res.status(400).json({ message: error.message });
       }
       if (error.code === 11000) {
-        return res.status(400).json({ message: "Category name already exists" });
+        return res
+          .status(400)
+          .json({ message: "Category name already exists" });
       }
       console.error("Create category error", error);
       res.status(500).json({ message: "Internal server error" });
@@ -79,7 +86,9 @@ export class CategoryController {
         return res.status(400).json({ message: error.message });
       }
       if (error.code === 11000) {
-        return res.status(400).json({ message: "Category name already exists" });
+        return res
+          .status(400)
+          .json({ message: "Category name already exists" });
       }
       console.error("Update category error", error);
       res.status(500).json({ message: "Internal server error" });
@@ -101,5 +110,20 @@ export class CategoryController {
       res.status(500).json({ message: "Internal server error" });
     }
   }
-}
 
+  async restoreCategory(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const { id } = req.params;
+
+      const result = await categoryService.restoreCategory(id, orgId);
+      res.json(result);
+    } catch (error: any) {
+      if (error.message === "Category not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      console.error("Restore category error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+}

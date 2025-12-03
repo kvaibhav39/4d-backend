@@ -9,6 +9,7 @@ export interface IProduct extends Document {
   defaultRent: number;
   color?: string;
   size?: string;
+  imageUrl?: string;
   isActive: boolean;
 }
 
@@ -22,6 +23,7 @@ const ProductSchema = new Schema<IProduct>(
     defaultRent: { type: Number, required: true },
     color: { type: String },
     size: { type: String },
+    imageUrl: { type: String },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
@@ -30,5 +32,3 @@ const ProductSchema = new Schema<IProduct>(
 ProductSchema.index({ orgId: 1, code: 1 }, { unique: true });
 
 export const Product = mongoose.model<IProduct>("Product", ProductSchema);
-
-

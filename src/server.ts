@@ -18,14 +18,6 @@ import orderRoutes from "./routes/orders";
 import bookingRoutes from "./routes/bookings";
 import dashboardRoutes from "./routes/dashboard";
 
-// Debug: Check if routes loaded
-console.log(
-  "Routes loaded - categories:",
-  !!categoryRoutes,
-  "products:",
-  !!productRoutes
-);
-
 dotenv.config();
 
 const app = express();

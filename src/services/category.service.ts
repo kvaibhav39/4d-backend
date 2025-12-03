@@ -16,12 +16,18 @@ export interface UpdateCategoryData {
 export interface ListCategoriesFilters {
   orgId: string;
   search?: string;
+  includeDeleted?: boolean;
 }
 
 export class CategoryService {
   async listCategories(filters: ListCategoriesFilters) {
-    const { orgId, search } = filters;
-    const query: any = { orgId, isActive: { $ne: false } };
+    const { orgId, search, includeDeleted } = filters;
+    const query: any = { orgId };
+    
+    // Only filter by isActive if we don't want to include deleted items
+    if (!includeDeleted) {
+      query.isActive = { $ne: false };
+    }
 
     if (search) {
       query.$or = [
@@ -105,6 +111,20 @@ export class CategoryService {
     }
 
     return { message: "Category deactivated" };
+  }
+
+  async restoreCategory(id: string, orgId: string) {
+    const category = await Category.findOneAndUpdate(
+      { _id: id, orgId },
+      { isActive: true },
+      { new: true }
+    );
+
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
+    return { message: "Category restored" };
   }
 }
 
