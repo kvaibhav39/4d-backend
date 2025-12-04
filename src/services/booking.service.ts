@@ -267,6 +267,13 @@ export class BookingService {
       throw new Error("Booking not found");
     }
 
+    // Sort payments by date (newest first) for consistent display
+    if (booking.payments && booking.payments.length > 0) {
+      booking.payments.sort(
+        (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
+      );
+    }
+
     return booking;
   }
 
@@ -716,6 +723,82 @@ export class BookingService {
         .reduce((sum, p) => sum + p.amount, 0);
     const currentRemaining = booking.decidedRent - currentTotalPaid;
 
+    // Handle REFUND type separately
+    if (paymentData.type === "REFUND") {
+      // Validate that there's money to refund
+      if (currentTotalPaid <= 0) {
+        throw new Error(
+          "Cannot process refund. No payment has been made for this booking."
+        );
+      }
+
+      // Validate that refund amount doesn't exceed total paid
+      if (paymentData.amount > currentTotalPaid) {
+        throw new Error(
+          `Refund amount (₹${paymentData.amount.toFixed(
+            2
+          )}) cannot exceed total paid amount (₹${currentTotalPaid.toFixed(
+            2
+          )}). Maximum refund allowed: ₹${currentTotalPaid.toFixed(2)}.`
+        );
+      }
+
+      // For refunds, keep the REFUND type and validate amount
+      const allowedRefundAmount = Math.min(
+        paymentData.amount,
+        currentTotalPaid
+      );
+      const refundNote =
+        paymentData.note ||
+        `Refund processed ₹${allowedRefundAmount.toFixed(2)}`;
+
+      booking.payments.push({
+        type: "REFUND",
+        amount: allowedRefundAmount,
+        at: new Date(),
+        note: refundNote,
+      });
+
+      // Recalculate amounts after refund
+      const totalPaid =
+        booking.payments
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
+          .reduce((sum, p) => sum + p.amount, 0) -
+        booking.payments
+          .filter((p) => p.type === "REFUND")
+          .reduce((sum, p) => sum + p.amount, 0);
+
+      const totalAdvance =
+        booking.payments
+          .filter((p) => p.type === "ADVANCE")
+          .reduce((sum, p) => sum + p.amount, 0) -
+        booking.payments
+          .filter((p) => p.type === "REFUND")
+          .reduce((sum, p) => sum + p.amount, 0);
+
+      booking.advanceAmount = Math.max(0, totalAdvance);
+      booking.remainingAmount = booking.decidedRent - totalPaid;
+
+      const savedBooking = await booking.save();
+
+      // Populate order info
+      await savedBooking.populate("orderId", "customerName customerPhone");
+
+      // Update order status after refund
+      if (savedBooking.orderId) {
+        const { OrderService } = await import("./order.service");
+        const orderService = new OrderService();
+        const orderIdStr =
+          typeof savedBooking.orderId === "string"
+            ? savedBooking.orderId
+            : (savedBooking.orderId as any)._id.toString();
+        await orderService.updateOrderStatus(orderIdStr);
+      }
+
+      return savedBooking;
+    }
+
+    // Handle regular payments (ADVANCE or PAYMENT_RECEIVED)
     // Prevent overpayment - only allow payment if there's remaining amount
     if (currentRemaining <= 0) {
       throw new Error(
@@ -727,7 +810,7 @@ export class BookingService {
     const allowedPaymentAmount = Math.min(paymentData.amount, currentRemaining);
 
     // Auto-determine payment type: if booking is still BOOKED, it's ADVANCE
-    let paymentType: PaymentType = paymentData.type;
+    let paymentType: PaymentType;
     if (booking.status === "BOOKED") {
       paymentType = "ADVANCE";
     } else {

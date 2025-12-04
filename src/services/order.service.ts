@@ -1052,9 +1052,9 @@ export class OrderService {
       });
     });
 
-    // Sort payment history by date
+    // Sort payment history by date (newest first)
     paymentHistory.sort(
-      (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime()
+      (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
     );
 
     const totals = await this.calculateOrderTotals(orderId);
