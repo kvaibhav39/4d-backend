@@ -360,7 +360,7 @@ export class BookingService {
       throw new Error("Booking not found");
     }
 
-    // Prevent editing bookings that are already issued or returned
+    // Prevent editing bookings that are already issued, returned, or cancelled
     if (
       existing.status === "ISSUED" ||
       existing.status === "RETURNED" ||
