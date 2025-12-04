@@ -233,6 +233,12 @@ export class OrderController {
       if (error.message === "Total rent is zero, cannot distribute payment") {
         return res.status(400).json({ message: error.message });
       }
+      if (
+        error.message.includes("All bookings") &&
+        error.message.includes("already fully paid")
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
       console.error("Collect payment error", error);
       res.status(500).json({ message: "Internal server error" });
     }

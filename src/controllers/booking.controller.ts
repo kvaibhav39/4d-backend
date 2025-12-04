@@ -299,6 +299,17 @@ export class BookingController {
       ) {
         return res.status(400).json({ message: error.message });
       }
+      // Handle refund validation errors
+      if (error.message.includes("Cannot process refund")) {
+        return res.status(400).json({ message: error.message });
+      }
+      if (
+        error.message.includes("Refund amount") &&
+        (error.message.includes("cannot exceed") ||
+          error.message.includes("exceed"))
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
       console.error("Add payment error", error);
       res.status(500).json({ message: "Internal server error" });
     }
