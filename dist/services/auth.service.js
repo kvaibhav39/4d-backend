@@ -11,14 +11,10 @@ class AuthService {
     async login(credentials) {
         const { email, password } = credentials;
         const user = await User_1.User.findOne({ email, isActive: true });
-        console.log("user", user);
         if (!user) {
             throw new Error("Invalid credentials");
         }
         const isMatch = await bcryptjs_1.default.compare(password, user.passwordHash);
-        console.log("isMatch", isMatch);
-        console.log("password", password);
-        console.log("user.passwordHash", user.passwordHash);
         if (!isMatch) {
             throw new Error("Invalid credentials");
         }
