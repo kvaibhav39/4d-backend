@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../middleware/auth");
+const validate_1 = require("../middleware/validate");
+const dashboard_validator_1 = require("../validators/dashboard.validator");
+const dashboard_controller_1 = require("../controllers/dashboard.controller");
+const router = (0, express_1.Router)();
+const dashboardController = new dashboard_controller_1.DashboardController();
+router.use(auth_1.authMiddleware);
+router.get("/stats", (0, validate_1.validateQuery)(dashboard_validator_1.dashboardStatsQuerySchema), (req, res) => dashboardController.getStats(req, res));
+router.get("/bookings", (0, validate_1.validateQuery)(dashboard_validator_1.dashboardBookingsQuerySchema), (req, res) => dashboardController.getBookings(req, res));
+router.get("/recent-bookings", (0, validate_1.validateQuery)(dashboard_validator_1.dashboardRecentBookingsQuerySchema), (req, res) => dashboardController.getRecentBookings(req, res));
+router.get("/customer-pickups", (0, validate_1.validateQuery)(dashboard_validator_1.dashboardCustomerPickupsQuerySchema), (req, res) => dashboardController.getCustomerPickups(req, res));
+router.get("/customer-returns", (0, validate_1.validateQuery)(dashboard_validator_1.dashboardCustomerReturnsQuerySchema), (req, res) => dashboardController.getCustomerReturns(req, res));
+exports.default = router;

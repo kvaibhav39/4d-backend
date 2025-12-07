@@ -7,7 +7,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Compiled output
-dist/
 build/
 *.js.map
 
