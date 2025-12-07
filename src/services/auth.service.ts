@@ -23,11 +23,15 @@ export class AuthService {
     const { email, password } = credentials;
 
     const user = await User.findOne({ email, isActive: true });
+    console.log("user", user);
     if (!user) {
       throw new Error("Invalid credentials");
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
+    console.log("isMatch", isMatch);
+    console.log("password", password);
+    console.log("user.passwordHash", user.passwordHash);
     if (!isMatch) {
       throw new Error("Invalid credentials");
     }
@@ -69,7 +73,7 @@ export class AuthService {
     const user = await User.findById(userId)
       .select("-passwordHash")
       .populate("orgId");
-    
+
     if (!user) {
       throw new Error("User not found");
     }
@@ -83,4 +87,3 @@ export class AuthService {
     };
   }
 }
-
