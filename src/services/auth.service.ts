@@ -23,15 +23,12 @@ export class AuthService {
     const { email, password } = credentials;
 
     const user = await User.findOne({ email, isActive: true });
-    console.log("user", user);
     if (!user) {
       throw new Error("Invalid credentials");
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
-    console.log("isMatch", isMatch);
-    console.log("password", password);
-    console.log("user.passwordHash", user.passwordHash);
+
     if (!isMatch) {
       throw new Error("Invalid credentials");
     }
