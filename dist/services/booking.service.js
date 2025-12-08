@@ -282,11 +282,14 @@ class BookingService {
             existing.status === "CANCELLED") {
             throw new Error(`Cannot edit booking. Booking with status "${existing.status}" cannot be edited.`);
         }
+        // Handle productId update
+        const productIdToUse = data.productId || existing.productId.toString();
         // Handle date/time updates and conflict checking
-        if (data.fromDateTime || data.toDateTime) {
+        // Use new productId if it's being updated, otherwise use existing
+        if (data.fromDateTime || data.toDateTime || data.productId) {
             const from = new Date(data.fromDateTime || existing.fromDateTime);
             const to = new Date(data.toDateTime || existing.toDateTime);
-            const conflicts = await this.hasOverlap(orgId, existing.productId.toString(), from, to, id);
+            const conflicts = await this.hasOverlap(orgId, productIdToUse, from, to, id);
             if (conflicts.length > 0 && !data.overrideConflicts) {
                 // Populate order to get customer name for conflicts
                 const conflictsWithOrder = await Booking_1.Booking.populate(conflicts, {
@@ -302,9 +305,26 @@ class BookingService {
                 }));
                 throw new Error("CONFLICT");
             }
-            existing.fromDateTime = from;
-            existing.toDateTime = to;
-            existing.isConflictOverridden = conflicts.length > 0;
+            if (data.fromDateTime || data.toDateTime) {
+                existing.fromDateTime = from;
+                existing.toDateTime = to;
+            }
+            // Set conflict override flag if conflicts were found and overridden
+            if (conflicts.length > 0) {
+                existing.isConflictOverridden = true;
+            }
+        }
+        // Update productId if provided
+        if (data.productId !== undefined) {
+            // Validate that the product exists
+            const product = await Product_1.Product.findOne({
+                _id: data.productId,
+                orgId,
+            });
+            if (!product) {
+                throw new Error("Product not found");
+            }
+            existing.productId = new mongoose_1.default.Types.ObjectId(data.productId);
         }
         // Update other fields (customer info is in order, not booking)
         if (data.categoryId !== undefined) {

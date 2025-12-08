@@ -106,8 +106,10 @@ class BookingController {
         try {
             const orgId = req.user.orgId;
             const { id } = req.params;
-            const { categoryId, fromDateTime, toDateTime, decidedRent, advanceAmount, additionalItemsDescription, overrideConflicts, } = req.body;
+            const { productId, categoryId, fromDateTime, toDateTime, decidedRent, advanceAmount, additionalItemsDescription, overrideConflicts, } = req.body;
             const updateData = {};
+            if (productId !== undefined)
+                updateData.productId = productId;
             if (categoryId !== undefined)
                 updateData.categoryId = categoryId || null;
             // Customer info is in order, not booking - removed customerName and customerPhone
@@ -140,10 +142,12 @@ class BookingController {
                     const orgId = req.user.orgId;
                     const { id } = req.params;
                     const existing = await bookingService.getBookingById(id, orgId);
-                    const { fromDateTime, toDateTime } = req.body;
+                    const { productId, fromDateTime, toDateTime } = req.body;
+                    // Use new productId if provided, otherwise use existing
+                    const productIdToUse = productId || existing.productId.toString();
                     const conflicts = await bookingService.checkConflicts({
                         orgId,
-                        productId: existing.productId.toString(),
+                        productId: productIdToUse,
                         fromDateTime: new Date(fromDateTime || existing.fromDateTime),
                         toDateTime: new Date(toDateTime || existing.toDateTime),
                         excludeBookingId: id,

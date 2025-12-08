@@ -84,6 +84,9 @@ exports.createBookingSchema = joi_1.default.object({
     overrideConflicts: joi_1.default.boolean().optional(),
 });
 exports.updateBookingSchema = joi_1.default.object({
+    productId: joi_1.default.string().pattern(objectIdPattern).optional().messages({
+        "string.pattern.base": "Invalid product ID format",
+    }),
     categoryId: joi_1.default.string()
         .pattern(objectIdPattern)
         .allow("", null)

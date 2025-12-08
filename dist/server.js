@@ -23,7 +23,8 @@ const dashboard_1 = __importDefault(require("./routes/dashboard"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
-app.use(express_1.default.json());
+app.use(express_1.default.json({ limit: "50mb" })); // Increase body size limit for large payloads
+app.use(express_1.default.urlencoded({ extended: true, limit: "50mb" })); // For form data
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/4dcholi";
 const PORT = process.env.PORT || 4000;
 mongoose_1.default
