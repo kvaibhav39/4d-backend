@@ -83,6 +83,9 @@ export const createBookingSchema = Joi.object({
 });
 
 export const updateBookingSchema = Joi.object({
+  productId: Joi.string().pattern(objectIdPattern).optional().messages({
+    "string.pattern.base": "Invalid product ID format",
+  }),
   categoryId: Joi.string()
     .pattern(objectIdPattern)
     .allow("", null)
