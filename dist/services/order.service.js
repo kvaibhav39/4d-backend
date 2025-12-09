@@ -4,6 +4,7 @@ exports.OrderService = void 0;
 const Order_1 = require("../models/Order");
 const Booking_1 = require("../models/Booking");
 const Product_1 = require("../models/Product");
+const Organization_1 = require("../models/Organization");
 class OrderService {
     /**
      * Calculate order totals based on active bookings
@@ -738,6 +739,8 @@ class OrderService {
         // Sort payment history by date (newest first)
         paymentHistory.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
         const totals = await this.calculateOrderTotals(orderId);
+        // Fetch organization data
+        const organization = await Organization_1.Organization.findById(orgId);
         return {
             order: order.toObject(),
             bookings: bookings.map((b) => b.toObject()),
@@ -745,6 +748,12 @@ class OrderService {
             totalReceived: totals.totalReceived,
             remainingAmount: totals.remainingAmount,
             paymentHistory,
+            organization: organization
+                ? {
+                    name: organization.name,
+                    code: organization.code,
+                }
+                : undefined,
         };
     }
 }

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Order, OrderStatus } from "../models/Order";
 import { Booking, BookingStatus, PaymentType } from "../models/Booking";
 import { Product } from "../models/Product";
+import { Organization } from "../models/Organization";
 
 export interface CreateOrderData {
   orgId: string;
@@ -46,6 +47,10 @@ export interface InvoiceData {
   totalReceived: number;
   remainingAmount: number;
   paymentHistory: any[];
+  organization?: {
+    name: string;
+    code?: string;
+  };
 }
 
 export class OrderService {
@@ -1059,6 +1064,9 @@ export class OrderService {
 
     const totals = await this.calculateOrderTotals(orderId);
 
+    // Fetch organization data
+    const organization = await Organization.findById(orgId);
+
     return {
       order: order.toObject(),
       bookings: bookings.map((b) => b.toObject()),
@@ -1066,6 +1074,12 @@ export class OrderService {
       totalReceived: totals.totalReceived,
       remainingAmount: totals.remainingAmount,
       paymentHistory,
+      organization: organization
+        ? {
+            name: organization.name,
+            code: organization.code,
+          }
+        : undefined,
     };
   }
 }
