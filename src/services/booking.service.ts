@@ -353,7 +353,7 @@ export class BookingService {
                 type: "ADVANCE",
                 amount: advanceAmount,
                 at: new Date(),
-                note: `Advance received ₹${advanceAmount.toFixed(2)}`,
+                note: `Advance received Rs.${advanceAmount.toFixed(2)}`,
               },
             ]
           : [],
@@ -583,16 +583,16 @@ export class BookingService {
 
       if (allowedPaymentAmount < paymentAmount) {
         throw new Error(
-          `Payment amount (₹${paymentAmount.toFixed(
+          `Payment amount (Rs.${paymentAmount.toFixed(
             2
-          )}) exceeds remaining amount (₹${currentRemaining.toFixed(
+          )}) exceeds remaining amount (Rs.${currentRemaining.toFixed(
             2
-          )}). Maximum allowed: ₹${currentRemaining.toFixed(2)}.`
+          )}). Maximum allowed: Rs.${currentRemaining.toFixed(2)}.`
         );
       }
 
       // Add payment entry as PAYMENT_RECEIVED (normal payment on issue)
-      const defaultNote = `Payment received ₹${allowedPaymentAmount.toFixed(
+      const defaultNote = `Payment received Rs.${allowedPaymentAmount.toFixed(
         2
       )}`;
       booking.payments.push({
@@ -679,16 +679,16 @@ export class BookingService {
 
       if (allowedPaymentAmount < paymentAmount) {
         throw new Error(
-          `Payment amount (₹${paymentAmount.toFixed(
+          `Payment amount (Rs.${paymentAmount.toFixed(
             2
-          )}) exceeds remaining amount (₹${currentRemaining.toFixed(
+          )}) exceeds remaining amount (Rs.${currentRemaining.toFixed(
             2
-          )}). Maximum allowed: ₹${currentRemaining.toFixed(2)}.`
+          )}). Maximum allowed: Rs.${currentRemaining.toFixed(2)}.`
         );
       }
 
       // Add payment entry as PAYMENT_RECEIVED (normal payment on return)
-      const defaultNote = `Payment received ₹${allowedPaymentAmount.toFixed(
+      const defaultNote = `Payment received Rs.${allowedPaymentAmount.toFixed(
         2
       )}`;
       booking.payments.push({
@@ -795,13 +795,13 @@ export class BookingService {
     if (customNote) return customNote;
 
     if (type === "REFUND") {
-      return `Refund processed ₹${amount.toFixed(2)}`;
+      return `Refund processed Rs.${amount.toFixed(2)}`;
     }
 
     const isAdjusted = originalAmount !== undefined && originalAmount > amount;
-    const amountText = `₹${amount.toFixed(2)}`;
+    const amountText = `Rs.${amount.toFixed(2)}`;
     const adjustedText = isAdjusted
-      ? ` (adjusted from ₹${originalAmount.toFixed(2)})`
+      ? ` (adjusted from Rs.${originalAmount.toFixed(2)})`
       : "";
 
     if (type === "ADVANCE") {
@@ -832,11 +832,11 @@ export class BookingService {
       // Validate that refund amount doesn't exceed total paid
       if (paymentData.amount > currentTotalPaid) {
         throw new Error(
-          `Refund amount (₹${paymentData.amount.toFixed(
+          `Refund amount (Rs.${paymentData.amount.toFixed(
             2
-          )}) cannot exceed total paid amount (₹${currentTotalPaid.toFixed(
+          )}) cannot exceed total paid amount (Rs.${currentTotalPaid.toFixed(
             2
-          )}). Maximum refund allowed: ₹${currentTotalPaid.toFixed(2)}.`
+          )}). Maximum refund allowed: Rs.${currentTotalPaid.toFixed(2)}.`
         );
       }
 

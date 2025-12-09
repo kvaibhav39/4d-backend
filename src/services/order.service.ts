@@ -344,7 +344,7 @@ export class OrderService {
                 type: "ADVANCE" as PaymentType,
                 amount: advanceAmount,
                 at: new Date(),
-                note: `Advance received ₹${advanceAmount.toFixed(2)}`,
+                note: `Advance received Rs.${advanceAmount.toFixed(2)}`,
               },
             ]
           : [],
@@ -615,7 +615,7 @@ export class OrderService {
             type: "REFUND" as PaymentType,
             amount: distributedAmount,
             at: new Date(),
-            note: `₹${distributedAmount.toFixed(
+            note: `Rs.${distributedAmount.toFixed(
               2
             )} transferred to ${productTitle}`,
           });
@@ -635,9 +635,9 @@ export class OrderService {
     const maxRefund = bookingAdvance - totalTransferable;
     if (finalRefundAmount > maxRefund) {
       throw new Error(
-        `Refund amount (₹${finalRefundAmount.toFixed(
+        `Refund amount (Rs.${finalRefundAmount.toFixed(
           2
-        )}) cannot exceed maximum refund (₹${maxRefund.toFixed(
+        )}) cannot exceed maximum refund (Rs.${maxRefund.toFixed(
           2
         )}) after transfers.`
       );
@@ -901,9 +901,9 @@ export class OrderService {
     }
     if (actualRefundAmount > totalPaid) {
       throw new Error(
-        `Refund amount (₹${actualRefundAmount.toFixed(
+        `Refund amount (Rs.${actualRefundAmount.toFixed(
           2
-        )}) cannot exceed total paid (₹${totalPaid.toFixed(2)})`
+        )}) cannot exceed total paid (Rs.${totalPaid.toFixed(2)})`
       );
     }
 
@@ -950,9 +950,9 @@ export class OrderService {
               at: new Date(),
               note:
                 refundNote ||
-                `Order cancellation refund (₹${distributedRefund.toFixed(
+                `Order cancellation refund (Rs.${distributedRefund.toFixed(
                   2
-                )} of ₹${actualRefundAmount.toFixed(2)})`,
+                )} of Rs.${actualRefundAmount.toFixed(2)})`,
             });
 
             // Update booking amounts
