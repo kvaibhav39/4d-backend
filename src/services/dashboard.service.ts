@@ -92,10 +92,11 @@ export class DashboardService {
     endDate.setHours(23, 59, 59, 999);
 
     // Filter by fromDateTime (pickup date) to show products ready for customer pickup
+    // Show all past BOOKED bookings (overdue pickups) plus next 7 days
     // Only show bookings with BOOKED status (items not yet issued to customers)
     return await Booking.find({
       orgId,
-      fromDateTime: { $gte: startDate, $lte: endDate },
+      fromDateTime: { $lte: endDate }, // Include all past dates and next 7 days
       status: "BOOKED", // Only show BOOKED status (not yet issued)
     })
       .populate("productId")
@@ -112,10 +113,11 @@ export class DashboardService {
     endDate.setHours(23, 59, 59, 999);
 
     // Filter by toDateTime (return date) to show products ready to return
+    // Show all past ISSUED bookings (overdue returns) plus next 7 days
     // Only show bookings with ISSUED status (items already issued to customers, now due to be returned)
     return await Booking.find({
       orgId,
-      toDateTime: { $gte: startDate, $lte: endDate },
+      toDateTime: { $lte: endDate }, // Include all past dates and next 7 days
       status: "ISSUED", // Only show ISSUED status (items already with customers)
     })
       .populate("productId")
