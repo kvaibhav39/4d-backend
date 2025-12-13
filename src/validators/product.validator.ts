@@ -10,18 +10,27 @@ export const createProductSchema = Joi.object({
     "string.max": "Product title must not exceed 200 characters",
     "any.required": "Product title is required",
   }),
-  description: Joi.string().trim().max(1000).allow("", null).optional().messages({
-    "string.max": "Description must not exceed 1000 characters",
-  }),
+  description: Joi.string()
+    .trim()
+    .max(1000)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.max": "Description must not exceed 1000 characters",
+    }),
   code: Joi.string().trim().min(1).max(50).required().messages({
     "string.empty": "Product code cannot be empty",
     "string.min": "Product code must be at least 1 character",
     "string.max": "Product code must not exceed 50 characters",
     "any.required": "Product code is required",
   }),
-  categoryId: Joi.string().pattern(objectIdPattern).allow("", null).optional().messages({
-    "string.pattern.base": "Invalid category ID format",
-  }),
+  categoryId: Joi.string()
+    .pattern(objectIdPattern)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.pattern.base": "Invalid category ID format",
+    }),
   defaultRent: Joi.number().min(0).required().messages({
     "number.base": "Default rent must be a number",
     "number.min": "Default rent must be 0 or greater",
@@ -41,17 +50,26 @@ export const updateProductSchema = Joi.object({
     "string.min": "Product title must be at least 1 character",
     "string.max": "Product title must not exceed 200 characters",
   }),
-  description: Joi.string().trim().max(1000).allow("", null).optional().messages({
-    "string.max": "Description must not exceed 1000 characters",
-  }),
+  description: Joi.string()
+    .trim()
+    .max(1000)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.max": "Description must not exceed 1000 characters",
+    }),
   code: Joi.string().trim().min(1).max(50).optional().messages({
     "string.empty": "Product code cannot be empty",
     "string.min": "Product code must be at least 1 character",
     "string.max": "Product code must not exceed 50 characters",
   }),
-  categoryId: Joi.string().pattern(objectIdPattern).allow("", null).optional().messages({
-    "string.pattern.base": "Invalid category ID format",
-  }),
+  categoryId: Joi.string()
+    .pattern(objectIdPattern)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.pattern.base": "Invalid category ID format",
+    }),
   defaultRent: Joi.number().min(0).optional().messages({
     "number.base": "Default rent must be a number",
     "number.min": "Default rent must be 0 or greater",
@@ -78,3 +96,9 @@ export const listProductsQuerySchema = Joi.object({
   }),
 });
 
+export const getProductBookingsQuerySchema = Joi.object({
+  filterDate: Joi.date().iso().optional().messages({
+    "date.base": "Filter date must be a valid date",
+    "date.format": "Filter date must be in ISO format",
+  }),
+});
