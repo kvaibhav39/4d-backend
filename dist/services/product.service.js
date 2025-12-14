@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductService = void 0;
 const Product_1 = require("../models/Product");
+const Booking_1 = require("../models/Booking");
 class ProductService {
     async listProducts(filters) {
         const { orgId, search, includeDeleted } = filters;
@@ -140,6 +141,79 @@ class ProductService {
             throw new Error("Product not found");
         }
         return { message: "Product restored" };
+    }
+    async getProductBookings(productId, orgId, filterDate) {
+        // Verify product exists and belongs to org
+        const product = await Product_1.Product.findOne({
+            _id: productId,
+            orgId,
+        });
+        if (!product) {
+            throw new Error("Product not found");
+        }
+        // Build query for bookings
+        const query = {
+            orgId,
+            productId,
+        };
+        // If filterDate is provided, filter bookings where:
+        // - fromDateTime matches the filter date
+        // - toDateTime matches the filter date
+        // - OR the filter date is between fromDateTime and toDateTime
+        if (filterDate) {
+            const filterDateObj = new Date(filterDate);
+            const filterDateStart = new Date(filterDateObj);
+            filterDateStart.setHours(0, 0, 0, 0);
+            const filterDateEnd = new Date(filterDateObj);
+            filterDateEnd.setHours(23, 59, 59, 999);
+            query.$or = [
+                // fromDateTime matches the filter date
+                {
+                    fromDateTime: {
+                        $gte: filterDateStart,
+                        $lte: filterDateEnd,
+                    },
+                },
+                // toDateTime matches the filter date
+                {
+                    toDateTime: {
+                        $gte: filterDateStart,
+                        $lte: filterDateEnd,
+                    },
+                },
+                // filter date is between fromDateTime and toDateTime
+                {
+                    fromDateTime: { $lte: filterDateEnd },
+                    toDateTime: { $gte: filterDateStart },
+                },
+            ];
+        }
+        // Get bookings sorted by fromDateTime in descending order
+        const bookings = await Booking_1.Booking.find(query)
+            .populate("productId")
+            .populate("categoryId")
+            .populate("orderId", "customerName customerPhone status")
+            .sort({ fromDateTime: -1 });
+        // Transform bookings to match frontend format
+        return bookings.map((booking) => {
+            const bookingObj = booking.toObject();
+            // Transform productId
+            if (bookingObj.productId && typeof bookingObj.productId === "object") {
+                bookingObj.product = bookingObj.productId;
+                bookingObj.productId = bookingObj.productId._id.toString();
+            }
+            // Transform categoryId
+            if (bookingObj.categoryId && typeof bookingObj.categoryId === "object") {
+                bookingObj.category = bookingObj.categoryId;
+                bookingObj.categoryId = bookingObj.categoryId._id.toString();
+            }
+            // Transform orderId
+            if (bookingObj.orderId && typeof bookingObj.orderId === "object") {
+                bookingObj.order = bookingObj.orderId;
+                bookingObj.orderId = bookingObj.orderId._id.toString();
+            }
+            return bookingObj;
+        });
     }
 }
 exports.ProductService = ProductService;

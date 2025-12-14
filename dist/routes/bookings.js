@@ -11,7 +11,6 @@ router.use(auth_1.authMiddleware);
 // Specific routes must come before parameterized routes
 router.post("/check-conflicts", (0, validate_1.validate)(booking_validator_1.checkConflictsSchema), (req, res) => bookingController.checkConflicts(req, res));
 router.get("/", (0, validate_1.validateQuery)(booking_validator_1.listBookingsQuerySchema), (req, res) => bookingController.listBookings(req, res));
-router.post("/", (0, validate_1.validate)(booking_validator_1.createBookingSchema), (req, res) => bookingController.createBooking(req, res));
 router.get("/:id", (0, validate_1.validateParams)(booking_validator_1.getBookingParamsSchema), (req, res) => bookingController.getBooking(req, res));
 router.put("/:id", (0, validate_1.validateParams)(booking_validator_1.getBookingParamsSchema), (0, validate_1.validate)(booking_validator_1.updateBookingSchema), (req, res) => bookingController.updateBooking(req, res));
 router.post("/:id/issue", (0, validate_1.validateParams)(booking_validator_1.getBookingParamsSchema), (0, validate_1.validate)(booking_validator_1.issueProductSchema), (req, res) => bookingController.issueProduct(req, res));

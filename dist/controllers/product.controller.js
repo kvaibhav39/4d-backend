@@ -165,5 +165,21 @@ class ProductController {
             res.status(500).json({ message: "Internal server error" });
         }
     }
+    async getProductBookings(req, res) {
+        try {
+            const orgId = req.user.orgId;
+            const { id } = req.params;
+            const filterDate = req.query.filterDate;
+            const bookings = await productService.getProductBookings(id, orgId, filterDate);
+            res.json(bookings);
+        }
+        catch (error) {
+            if (error.message === "Product not found") {
+                return res.status(404).json({ message: error.message });
+            }
+            console.error("Get product bookings error", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
 }
 exports.ProductController = ProductController;

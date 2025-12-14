@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.listProductsQuerySchema = exports.getProductParamsSchema = exports.updateProductSchema = exports.createProductSchema = void 0;
+exports.getProductBookingsQuerySchema = exports.listProductsQuerySchema = exports.getProductParamsSchema = exports.updateProductSchema = exports.createProductSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 const objectIdPattern = /^[0-9a-fA-F]{24}$/;
 exports.createProductSchema = joi_1.default.object({
@@ -13,7 +13,12 @@ exports.createProductSchema = joi_1.default.object({
         "string.max": "Product title must not exceed 200 characters",
         "any.required": "Product title is required",
     }),
-    description: joi_1.default.string().trim().max(1000).allow("", null).optional().messages({
+    description: joi_1.default.string()
+        .trim()
+        .max(1000)
+        .allow("", null)
+        .optional()
+        .messages({
         "string.max": "Description must not exceed 1000 characters",
     }),
     code: joi_1.default.string().trim().min(1).max(50).required().messages({
@@ -22,7 +27,11 @@ exports.createProductSchema = joi_1.default.object({
         "string.max": "Product code must not exceed 50 characters",
         "any.required": "Product code is required",
     }),
-    categoryId: joi_1.default.string().pattern(objectIdPattern).allow("", null).optional().messages({
+    categoryId: joi_1.default.string()
+        .pattern(objectIdPattern)
+        .allow("", null)
+        .optional()
+        .messages({
         "string.pattern.base": "Invalid category ID format",
     }),
     defaultRent: joi_1.default.number().min(0).required().messages({
@@ -43,7 +52,12 @@ exports.updateProductSchema = joi_1.default.object({
         "string.min": "Product title must be at least 1 character",
         "string.max": "Product title must not exceed 200 characters",
     }),
-    description: joi_1.default.string().trim().max(1000).allow("", null).optional().messages({
+    description: joi_1.default.string()
+        .trim()
+        .max(1000)
+        .allow("", null)
+        .optional()
+        .messages({
         "string.max": "Description must not exceed 1000 characters",
     }),
     code: joi_1.default.string().trim().min(1).max(50).optional().messages({
@@ -51,7 +65,11 @@ exports.updateProductSchema = joi_1.default.object({
         "string.min": "Product code must be at least 1 character",
         "string.max": "Product code must not exceed 50 characters",
     }),
-    categoryId: joi_1.default.string().pattern(objectIdPattern).allow("", null).optional().messages({
+    categoryId: joi_1.default.string()
+        .pattern(objectIdPattern)
+        .allow("", null)
+        .optional()
+        .messages({
         "string.pattern.base": "Invalid category ID format",
     }),
     defaultRent: joi_1.default.number().min(0).optional().messages({
@@ -75,5 +93,11 @@ exports.getProductParamsSchema = joi_1.default.object({
 exports.listProductsQuerySchema = joi_1.default.object({
     search: joi_1.default.string().trim().max(100).optional().messages({
         "string.max": "Search term must not exceed 100 characters",
+    }),
+});
+exports.getProductBookingsQuerySchema = joi_1.default.object({
+    filterDate: joi_1.default.date().iso().optional().messages({
+        "date.base": "Filter date must be a valid date",
+        "date.format": "Filter date must be in ISO format",
     }),
 });

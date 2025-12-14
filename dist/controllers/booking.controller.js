@@ -89,19 +89,6 @@ class BookingController {
             res.status(500).json({ message: "Internal server error" });
         }
     }
-    async createBooking(req, res) {
-        try {
-            // Note: Direct booking creation is deprecated. Bookings should be created through orders.
-            // This endpoint is kept for backwards compatibility but requires orderId.
-            return res.status(400).json({
-                message: "Bookings must be created through orders. Please use POST /orders/:id/bookings",
-            });
-        }
-        catch (error) {
-            console.error("Create booking error", error);
-            res.status(500).json({ message: "Internal server error" });
-        }
-    }
     async updateBooking(req, res) {
         try {
             const orgId = req.user.orgId;
