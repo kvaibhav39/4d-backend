@@ -27,61 +27,6 @@ export const checkConflictsSchema = Joi.object({
   }),
 });
 
-export const createBookingSchema = Joi.object({
-  // Note: Direct booking creation is deprecated. Bookings should be created through orders.
-  // This schema is kept for backwards compatibility but bookings now require orderId.
-  orderId: Joi.string().pattern(objectIdPattern).required().messages({
-    "string.pattern.base": "Invalid order ID format",
-    "any.required": "Order ID is required - bookings must belong to an order",
-  }),
-  productId: Joi.string().pattern(objectIdPattern).required().messages({
-    "string.pattern.base": "Invalid product ID format",
-    "any.required": "Product ID is required",
-  }),
-  categoryId: Joi.string()
-    .pattern(objectIdPattern)
-    .allow("", null)
-    .optional()
-    .messages({
-      "string.pattern.base": "Invalid category ID format",
-    }),
-  fromDateTime: Joi.date().iso().required().messages({
-    "date.base": "From date time must be a valid date",
-    "date.format": "From date time must be in ISO format",
-    "any.required": "From date time is required",
-  }),
-  toDateTime: Joi.date()
-    .iso()
-    .greater(Joi.ref("fromDateTime"))
-    .required()
-    .messages({
-      "date.base": "To date time must be a valid date",
-      "date.format": "To date time must be in ISO format",
-      "date.greater": "To date time must be after from date time",
-      "any.required": "To date time is required",
-    }),
-  decidedRent: Joi.number().min(0).required().messages({
-    "number.base": "Decided rent must be a number",
-    "number.min": "Decided rent must be 0 or greater",
-    "any.required": "Decided rent is required",
-  }),
-  advanceAmount: Joi.number().min(0).required().messages({
-    "number.base": "Advance amount must be a number",
-    "number.min": "Advance amount must be 0 or greater",
-    "any.required": "Advance amount is required",
-  }),
-  additionalItemsDescription: Joi.string()
-    .trim()
-    .max(1000)
-    .allow("", null)
-    .optional()
-    .messages({
-      "string.max":
-        "Additional items description must not exceed 1000 characters",
-    }),
-  overrideConflicts: Joi.boolean().optional(),
-});
-
 export const updateBookingSchema = Joi.object({
   productId: Joi.string().pattern(objectIdPattern).optional().messages({
     "string.pattern.base": "Invalid product ID format",

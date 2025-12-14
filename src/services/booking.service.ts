@@ -26,19 +26,6 @@ export interface CheckConflictsData {
   excludeBookingId?: string;
 }
 
-export interface CreateBookingData {
-  orgId: string;
-  orderId: string; // Required - all bookings must belong to an order
-  productId: string;
-  categoryId?: string;
-  fromDateTime: Date;
-  toDateTime: Date;
-  decidedRent: number;
-  advanceAmount: number;
-  additionalItemsDescription?: string;
-  overrideConflicts?: boolean;
-}
-
 export interface UpdateBookingData {
   productId?: string;
   categoryId?: string | null;
@@ -274,90 +261,6 @@ export class BookingService {
         (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
       );
     }
-
-    return booking;
-  }
-
-  async createBooking(data: CreateBookingData) {
-    // Note: This method is deprecated. Bookings should be created through OrderService.addBookingToOrder
-    // This is kept for backwards compatibility but requires orderId
-    const {
-      orgId,
-      orderId,
-      productId,
-      categoryId,
-      fromDateTime,
-      toDateTime,
-      decidedRent,
-      advanceAmount,
-      additionalItemsDescription,
-      overrideConflicts,
-    } = data;
-
-    // Verify product exists
-    const product = await Product.findOne({ _id: productId, orgId });
-    if (!product) {
-      throw new Error("Product not found for this org");
-    }
-
-    const from = new Date(fromDateTime);
-    const to = new Date(toDateTime);
-
-    // Check for conflicts (excluding bookings in the same order)
-    const existingBookings = await Booking.find({ orderId });
-    const conflicts = await Booking.find({
-      orgId,
-      productId,
-      status: { $ne: "CANCELLED" },
-      _id: { $nin: existingBookings.map((b) => b._id) },
-      $or: [{ fromDateTime: { $lt: to }, toDateTime: { $gt: from } }],
-    });
-
-    if (conflicts.length > 0 && !overrideConflicts) {
-      // Populate order to get customer name for conflicts
-      const conflictsWithOrder = await Booking.populate(conflicts, {
-        path: "orderId",
-        select: "customerName",
-      });
-
-      const conflictDetails = conflictsWithOrder.map((c: any) => ({
-        bookingId: c._id.toString(),
-        customerName: c.orderId?.customerName || "Unknown",
-        fromDateTime: c.fromDateTime.toISOString(),
-        toDateTime: c.toDateTime.toISOString(),
-        status: c.status,
-      }));
-      throw new Error("CONFLICT");
-    }
-
-    const remainingAmount = decidedRent - advanceAmount;
-
-    const booking = await Booking.create({
-      orgId,
-      orderId,
-      productId,
-      categoryId: categoryId || product.categoryId || undefined,
-      fromDateTime: from,
-      toDateTime: to,
-      productDefaultRent: product.defaultRent,
-      decidedRent,
-      advanceAmount,
-      remainingAmount,
-      status: "BOOKED",
-      isConflictOverridden: conflicts.length > 0,
-      additionalItemsDescription,
-      payments:
-        advanceAmount > 0
-          ? [
-              {
-                type: "ADVANCE",
-                amount: advanceAmount,
-                at: new Date(),
-                note: `Advance received Rs.${advanceAmount.toFixed(2)}`,
-              },
-            ]
-          : [],
-    });
 
     return booking;
   }

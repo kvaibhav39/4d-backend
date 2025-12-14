@@ -7,7 +7,6 @@ import {
 } from "../middleware/validate";
 import {
   checkConflictsSchema,
-  createBookingSchema,
   updateBookingSchema,
   addPaymentSchema,
   getBookingParamsSchema,
@@ -30,10 +29,6 @@ router.post("/check-conflicts", validate(checkConflictsSchema), (req, res) =>
 
 router.get("/", validateQuery(listBookingsQuerySchema), (req, res) =>
   bookingController.listBookings(req, res)
-);
-
-router.post("/", validate(createBookingSchema), (req, res) =>
-  bookingController.createBooking(req, res)
 );
 
 router.get("/:id", validateParams(getBookingParamsSchema), (req, res) =>
