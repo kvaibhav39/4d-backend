@@ -64,5 +64,17 @@ class DashboardController {
             res.status(500).json({ message: "Internal server error" });
         }
     }
+    async getTopProducts(req, res) {
+        try {
+            const orgId = req.user.orgId;
+            const limit = req.query.limit ? parseInt(req.query.limit) : 5;
+            const topProducts = await dashboardService.getTopProducts(orgId, limit);
+            res.json(topProducts);
+        }
+        catch (error) {
+            console.error("Dashboard top products error", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
 }
 exports.DashboardController = DashboardController;

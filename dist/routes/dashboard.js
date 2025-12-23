@@ -13,4 +13,5 @@ router.get("/bookings", (0, validate_1.validateQuery)(dashboard_validator_1.dash
 router.get("/recent-bookings", (0, validate_1.validateQuery)(dashboard_validator_1.dashboardRecentBookingsQuerySchema), (req, res) => dashboardController.getRecentBookings(req, res));
 router.get("/customer-pickups", (0, validate_1.validateQuery)(dashboard_validator_1.dashboardCustomerPickupsQuerySchema), (req, res) => dashboardController.getCustomerPickups(req, res));
 router.get("/customer-returns", (0, validate_1.validateQuery)(dashboard_validator_1.dashboardCustomerReturnsQuerySchema), (req, res) => dashboardController.getCustomerReturns(req, res));
+router.get("/top-products", (req, res) => dashboardController.getTopProducts(req, res));
 exports.default = router;

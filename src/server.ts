@@ -17,6 +17,7 @@ import productRoutes from "./routes/products";
 import orderRoutes from "./routes/orders";
 import bookingRoutes from "./routes/bookings";
 import dashboardRoutes from "./routes/dashboard";
+import publicRoutes from "./routes/public";
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/public", publicRoutes);
 
 app.listen(PORT, () => {
   console.log(`Backend server listening on port ${PORT}`);

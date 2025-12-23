@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Booking } from "../models/Booking";
 
 export interface DashboardStats {
@@ -8,6 +9,21 @@ export interface DashboardStats {
   cancelledCount: number;
   totalRent: number;
   totalReceived: number;
+}
+
+export interface TopProduct {
+  product: {
+    _id: string;
+    title: string;
+    code: string;
+    imageUrl?: string;
+    defaultRent: number;
+    category?: {
+      _id: string;
+      name: string;
+    };
+  };
+  bookingCount: number;
 }
 
 export interface GetStatsParams {
@@ -30,19 +46,23 @@ export class DashboardService {
       issuedCount: bookings.filter((b) => b.status === "ISSUED").length,
       returnedCount: bookings.filter((b) => b.status === "RETURNED").length,
       cancelledCount: bookings.filter((b) => b.status === "CANCELLED").length,
-      totalRent: bookings.reduce((sum, b) => sum + b.decidedRent, 0),
-      totalReceived: bookings.reduce((sum, booking) => {
-        const paid =
-          booking.payments
-            .filter(
-              (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
-            )
-            .reduce((s, p) => s + p.amount, 0) -
-          booking.payments
-            .filter((p) => p.type === "REFUND")
-            .reduce((s, p) => s + p.amount, 0);
-        return sum + paid;
-      }, 0),
+      totalRent: bookings
+        .filter((b) => b.status !== "CANCELLED")
+        .reduce((sum, b) => sum + b.decidedRent, 0),
+      totalReceived: bookings
+        .filter((b) => b.status !== "CANCELLED")
+        .reduce((sum, booking) => {
+          const paid =
+            booking.payments
+              .filter(
+                (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
+              )
+              .reduce((s, p) => s + p.amount, 0) -
+            booking.payments
+              .filter((p) => p.type === "REFUND")
+              .reduce((s, p) => s + p.amount, 0);
+          return sum + paid;
+        }, 0),
     };
 
     return stats;
@@ -124,5 +144,85 @@ export class DashboardService {
       .populate("categoryId")
       .populate("orderId", "customerName customerPhone")
       .sort({ toDateTime: 1 }); // Sort by return date ascending (earliest first)
+  }
+
+  async getTopProducts(
+    orgId: string,
+    limit: number = 5
+  ): Promise<TopProduct[]> {
+    // Aggregate bookings by productId, excluding CANCELLED bookings
+    const topProducts = await Booking.aggregate([
+      {
+        $match: {
+          orgId: new mongoose.Types.ObjectId(orgId),
+          status: { $ne: "CANCELLED" },
+        },
+      },
+      {
+        $group: {
+          _id: "$productId",
+          bookingCount: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { bookingCount: -1 },
+      },
+      {
+        $limit: limit,
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      {
+        $unwind: {
+          path: "$product",
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "product.categoryId",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      {
+        $unwind: {
+          path: "$category",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          product: {
+            _id: { $toString: "$product._id" },
+            title: "$product.title",
+            code: "$product.code",
+            imageUrl: "$product.imageUrl",
+            defaultRent: "$product.defaultRent",
+            category: {
+              $cond: {
+                if: { $ifNull: ["$category", false] },
+                then: {
+                  _id: { $toString: "$category._id" },
+                  name: "$category.name",
+                },
+                else: null,
+              },
+            },
+          },
+          bookingCount: 1,
+        },
+      },
+    ]);
+
+    return topProducts;
   }
 }

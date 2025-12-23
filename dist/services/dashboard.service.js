@@ -1,6 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashboardService = void 0;
+const mongoose_1 = __importDefault(require("mongoose"));
 const Booking_1 = require("../models/Booking");
 class DashboardService {
     async getStats(params) {
@@ -15,8 +19,12 @@ class DashboardService {
             issuedCount: bookings.filter((b) => b.status === "ISSUED").length,
             returnedCount: bookings.filter((b) => b.status === "RETURNED").length,
             cancelledCount: bookings.filter((b) => b.status === "CANCELLED").length,
-            totalRent: bookings.reduce((sum, b) => sum + b.decidedRent, 0),
-            totalReceived: bookings.reduce((sum, booking) => {
+            totalRent: bookings
+                .filter((b) => b.status !== "CANCELLED")
+                .reduce((sum, b) => sum + b.decidedRent, 0),
+            totalReceived: bookings
+                .filter((b) => b.status !== "CANCELLED")
+                .reduce((sum, booking) => {
                 const paid = booking.payments
                     .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
                     .reduce((s, p) => s + p.amount, 0) -
@@ -97,6 +105,81 @@ class DashboardService {
             .populate("categoryId")
             .populate("orderId", "customerName customerPhone")
             .sort({ toDateTime: 1 }); // Sort by return date ascending (earliest first)
+    }
+    async getTopProducts(orgId, limit = 5) {
+        // Aggregate bookings by productId, excluding CANCELLED bookings
+        const topProducts = await Booking_1.Booking.aggregate([
+            {
+                $match: {
+                    orgId: new mongoose_1.default.Types.ObjectId(orgId),
+                    status: { $ne: "CANCELLED" },
+                },
+            },
+            {
+                $group: {
+                    _id: "$productId",
+                    bookingCount: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { bookingCount: -1 },
+            },
+            {
+                $limit: limit,
+            },
+            {
+                $lookup: {
+                    from: "products",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "product",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$product",
+                    preserveNullAndEmptyArrays: false,
+                },
+            },
+            {
+                $lookup: {
+                    from: "categories",
+                    localField: "product.categoryId",
+                    foreignField: "_id",
+                    as: "category",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$category",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    product: {
+                        _id: { $toString: "$product._id" },
+                        title: "$product.title",
+                        code: "$product.code",
+                        imageUrl: "$product.imageUrl",
+                        defaultRent: "$product.defaultRent",
+                        category: {
+                            $cond: {
+                                if: { $ifNull: ["$category", false] },
+                                then: {
+                                    _id: { $toString: "$category._id" },
+                                    name: "$category.name",
+                                },
+                                else: null,
+                            },
+                        },
+                    },
+                    bookingCount: 1,
+                },
+            },
+        ]);
+        return topProducts;
     }
 }
 exports.DashboardService = DashboardService;

@@ -43,4 +43,8 @@ router.get(
   (req, res) => dashboardController.getCustomerReturns(req, res)
 );
 
+router.get("/top-products", (req, res) =>
+  dashboardController.getTopProducts(req, res)
+);
+
 export default router;
