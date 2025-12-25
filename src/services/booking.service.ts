@@ -110,20 +110,37 @@ export class BookingService {
     }));
   }
 
-  async listBookings(filters: ListBookingsFilters): Promise<PaginatedResponse<any>> {
-    const { orgId, status, startDate, endDate, productId, search, page: rawPage, limit: rawLimit } = filters;
+  async listBookings(
+    filters: ListBookingsFilters
+  ): Promise<PaginatedResponse<any>> {
+    const {
+      orgId,
+      status,
+      startDate,
+      endDate,
+      productId,
+      search,
+      page: rawPage,
+      limit: rawLimit,
+    } = filters;
 
     // Validate and set pagination params
     const { page, limit } = PaginationHelper.validateParams(rawPage, rawLimit);
     const skip = PaginationHelper.getSkip(page, limit);
 
-    // Build base query
-    const query: any = { orgId };
+    // Build base query - convert orgId to ObjectId for proper matching
+    const query: any = {
+      orgId:
+        typeof orgId === "string" ? new mongoose.Types.ObjectId(orgId) : orgId,
+    };
     if (status) {
       query.status = status;
     }
     if (productId) {
-      query.productId = productId;
+      query.productId =
+        typeof productId === "string"
+          ? new mongoose.Types.ObjectId(productId)
+          : productId;
     }
     if (startDate || endDate) {
       query.$or = [];
@@ -156,9 +173,9 @@ export class BookingService {
     // If search is provided, use optimized aggregation pipeline
     if (search && search.trim()) {
       const searchTerm = search.trim();
-      
-      // Use aggregation for efficient searching with joins
-      const pipeline: any[] = [
+
+      // Build base pipeline stages with optimized projections
+      const basePipeline: any[] = [
         { $match: query },
         {
           $lookup: {
@@ -166,6 +183,21 @@ export class BookingService {
             localField: "orderId",
             foreignField: "_id",
             as: "order",
+            pipeline: [
+              {
+                $project: {
+                  _id: 0,
+                  customerName: 1,
+                  customerPhone: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: {
+            path: "$order",
+            preserveNullAndEmptyArrays: false,
           },
         },
         {
@@ -174,24 +206,67 @@ export class BookingService {
             localField: "productId",
             foreignField: "_id",
             as: "product",
+            pipeline: [
+              {
+                $project: {
+                  _id: 0,
+                  title: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: {
+            path: "$product",
+            preserveNullAndEmptyArrays: false,
           },
         },
         {
           $match: {
             $or: [
               { "order.customerName": { $regex: searchTerm, $options: "i" } },
-              { "order.customerPhone": { $regex: searchTerm, $options: "i" } },
+              {
+                $and: [
+                  {
+                    "order.customerPhone": { $exists: true, $nin: [null, ""] },
+                  },
+                  {
+                    "order.customerPhone": {
+                      $regex: searchTerm,
+                      $options: "i",
+                    },
+                  },
+                ],
+              },
               { "product.title": { $regex: searchTerm, $options: "i" } },
             ],
           },
         },
-        { $sort: { fromDateTime: 1 } },
       ];
 
-      // Get total count
-      const countPipeline = [...pipeline, { $count: "total" }];
-      const countResult = await Booking.aggregate(countPipeline);
-      const total = countResult.length > 0 ? countResult[0].total : 0;
+      // Use $facet to get count and data in a single aggregation
+      const facetPipeline: any[] = [
+        ...basePipeline,
+        {
+          $facet: {
+            metadata: [{ $count: "total" }],
+            data: [
+              { $sort: { fromDateTime: 1 } },
+              { $skip: skip },
+              { $limit: limit },
+              {
+                $project: {
+                  _id: 1,
+                },
+              },
+            ],
+          },
+        },
+      ];
+
+      const [result] = await Booking.aggregate(facetPipeline);
+      const total = result.metadata[0]?.total || 0;
 
       if (total === 0) {
         return {
@@ -200,13 +275,8 @@ export class BookingService {
         };
       }
 
-      // Get paginated results
-      pipeline.push({ $skip: skip });
-      pipeline.push({ $limit: limit });
-
-      // Get booking IDs from aggregation
-      const bookingResults = await Booking.aggregate(pipeline);
-      const bookingIds = bookingResults.map((b) => b._id);
+      // Extract booking IDs from aggregation results
+      const bookingIds = result.data.map((b: any) => b._id);
 
       // Fetch full documents with proper population
       const bookings = await Booking.find({ _id: { $in: bookingIds } })
@@ -225,11 +295,12 @@ export class BookingService {
     }
 
     // No search - use optimized regular query with pagination
+    // Execute count and find in parallel for better performance
     const [total, bookings] = await Promise.all([
       Booking.countDocuments(query),
       Booking.find(query)
-        .populate("productId")
-        .populate("categoryId")
+        .populate("productId", "title code imageUrl defaultRent")
+        .populate("categoryId", "name")
         .populate("orderId", "customerName customerPhone")
         .sort({ fromDateTime: 1 })
         .skip(skip)

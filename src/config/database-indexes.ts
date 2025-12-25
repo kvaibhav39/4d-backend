@@ -25,6 +25,9 @@ export async function createDatabaseIndexes(): Promise<void> {
     await Order.collection.createIndex({ orgId: 1, createdAt: -1 });
     await Order.collection.createIndex({ orgId: 1, customerName: "text", customerPhone: "text" });
     await Order.collection.createIndex({ customerPhone: 1 });
+    // Index for search optimization
+    await Order.collection.createIndex({ orgId: 1, customerName: 1 });
+    await Order.collection.createIndex({ orgId: 1, customerPhone: 1 });
 
     // Booking indexes
     await Booking.collection.createIndex({ orgId: 1, status: 1 });
