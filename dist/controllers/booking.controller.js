@@ -59,15 +59,19 @@ class BookingController {
         try {
             const orgId = req.user.orgId;
             const { status, startDate, endDate, productId, search } = req.query;
-            const bookings = await bookingService.listBookings({
+            const page = req.query.page ? parseInt(req.query.page, 10) : undefined;
+            const limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined;
+            const result = await bookingService.listBookings({
                 orgId,
                 status: status,
                 startDate: startDate,
                 endDate: endDate,
                 productId: productId,
                 search: search,
+                page,
+                limit,
             });
-            res.json(bookings);
+            res.json(result);
         }
         catch (error) {
             console.error("List bookings error", error);

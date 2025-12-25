@@ -19,6 +19,8 @@ import bookingRoutes from "./routes/bookings";
 import dashboardRoutes from "./routes/dashboard";
 import publicRoutes from "./routes/public";
 
+import { createDatabaseIndexes } from "./config/database-indexes";
+
 dotenv.config();
 
 const app = express();
@@ -33,8 +35,10 @@ const PORT = process.env.PORT || 4000;
 
 mongoose
   .connect(MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log("Connected to MongoDB");
+    // Create database indexes for optimal query performance
+    await createDatabaseIndexes();
   })
   .catch((err) => {
     console.error("MongoDB connection error", err);

@@ -5,6 +5,7 @@ const Order_1 = require("../models/Order");
 const Booking_1 = require("../models/Booking");
 const Product_1 = require("../models/Product");
 const Organization_1 = require("../models/Organization");
+const pagination_1 = require("../types/pagination");
 class OrderService {
     /**
      * Calculate order totals based on active bookings
@@ -130,10 +131,14 @@ class OrderService {
         return order;
     }
     /**
-     * List orders with filters
+     * List orders with filters and pagination
      */
     async listOrders(filters) {
-        const { orgId, status, startDate, endDate, search } = filters;
+        const { orgId, status, startDate, endDate, search, page: rawPage, limit: rawLimit } = filters;
+        // Validate and set pagination params
+        const { page, limit } = pagination_1.PaginationHelper.validateParams(rawPage, rawLimit);
+        const skip = pagination_1.PaginationHelper.getSkip(page, limit);
+        // Build query
         const query = { orgId };
         if (status) {
             query.status = status;
@@ -157,15 +162,27 @@ class OrderService {
                 query.createdAt.$lt = end;
             }
         }
-        return await Order_1.Order.find(query)
-            .populate({
-            path: "bookings",
-            populate: [
-                { path: "productId", select: "title code" },
-                { path: "categoryId", select: "name" },
-            ],
-        })
-            .sort({ createdAt: -1 });
+        // Execute count and find in parallel for better performance
+        const [total, orders] = await Promise.all([
+            Order_1.Order.countDocuments(query),
+            Order_1.Order.find(query)
+                .populate({
+                path: "bookings",
+                populate: [
+                    { path: "productId", select: "title code" },
+                    { path: "categoryId", select: "name" },
+                ],
+            })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean() // Use lean() for better performance
+        ]);
+        const pagination = pagination_1.PaginationHelper.getMeta(page, limit, total);
+        return {
+            data: orders,
+            pagination,
+        };
     }
     /**
      * Update order customer details

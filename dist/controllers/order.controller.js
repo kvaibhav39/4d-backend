@@ -38,14 +38,18 @@ class OrderController {
         try {
             const orgId = req.user.orgId;
             const { status, startDate, endDate, search } = req.query;
-            const orders = await orderService.listOrders({
+            const page = req.query.page ? parseInt(req.query.page, 10) : undefined;
+            const limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined;
+            const result = await orderService.listOrders({
                 orgId,
                 status: status,
                 startDate: startDate,
                 endDate: endDate,
                 search: search,
+                page,
+                limit,
             });
-            res.json(orders);
+            res.json(result);
         }
         catch (error) {
             console.error("List orders error", error);

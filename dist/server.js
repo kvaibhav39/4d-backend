@@ -21,6 +21,7 @@ const orders_1 = __importDefault(require("./routes/orders"));
 const bookings_1 = __importDefault(require("./routes/bookings"));
 const dashboard_1 = __importDefault(require("./routes/dashboard"));
 const public_1 = __importDefault(require("./routes/public"));
+const database_indexes_1 = require("./config/database-indexes");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
@@ -30,8 +31,10 @@ const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/4dchol
 const PORT = process.env.PORT || 4000;
 mongoose_1.default
     .connect(MONGODB_URI)
-    .then(() => {
+    .then(async () => {
     console.log("Connected to MongoDB");
+    // Create database indexes for optimal query performance
+    await (0, database_indexes_1.createDatabaseIndexes)();
 })
     .catch((err) => {
     console.error("MongoDB connection error", err);

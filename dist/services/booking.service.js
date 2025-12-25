@@ -41,6 +41,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const Booking_1 = require("../models/Booking");
 const Product_1 = require("../models/Product");
 const order_service_1 = require("./order.service");
+const pagination_1 = require("../types/pagination");
 const orderService = new order_service_1.OrderService();
 class BookingService {
     async hasOverlap(orgId, productId, fromDateTime, toDateTime, excludeId) {
@@ -78,7 +79,10 @@ class BookingService {
         }));
     }
     async listBookings(filters) {
-        const { orgId, status, startDate, endDate, productId, search } = filters;
+        const { orgId, status, startDate, endDate, productId, search, page: rawPage, limit: rawLimit } = filters;
+        // Validate and set pagination params
+        const { page, limit } = pagination_1.PaginationHelper.validateParams(rawPage, rawLimit);
+        const skip = pagination_1.PaginationHelper.getSkip(page, limit);
         // Build base query
         const query = { orgId };
         if (status) {
@@ -115,84 +119,85 @@ class BookingService {
             if (query.$or.length === 0)
                 delete query.$or;
         }
-        // If search is provided, use aggregation pipeline to search across related collections
+        // If search is provided, use optimized aggregation pipeline
         if (search && search.trim()) {
             const searchTerm = search.trim();
-            // First, get all bookings matching the base query
-            const baseBookings = await Booking_1.Booking.find(query)
-                .select("_id orderId productId fromDateTime")
-                .lean();
-            if (baseBookings.length === 0) {
-                return [];
-            }
-            // Get unique order and product IDs (convert to ObjectId instances)
-            const orderIds = [
-                ...new Set(baseBookings
-                    .map((b) => {
-                    if (!b.orderId)
-                        return null;
-                    return typeof b.orderId === "string"
-                        ? new mongoose_1.default.Types.ObjectId(b.orderId)
-                        : b.orderId;
-                })
-                    .filter(Boolean)),
+            // Use aggregation for efficient searching with joins
+            const pipeline = [
+                { $match: query },
+                {
+                    $lookup: {
+                        from: "orders",
+                        localField: "orderId",
+                        foreignField: "_id",
+                        as: "order",
+                    },
+                },
+                {
+                    $lookup: {
+                        from: "products",
+                        localField: "productId",
+                        foreignField: "_id",
+                        as: "product",
+                    },
+                },
+                {
+                    $match: {
+                        $or: [
+                            { "order.customerName": { $regex: searchTerm, $options: "i" } },
+                            { "order.customerPhone": { $regex: searchTerm, $options: "i" } },
+                            { "product.title": { $regex: searchTerm, $options: "i" } },
+                        ],
+                    },
+                },
+                { $sort: { fromDateTime: 1 } },
             ];
-            const productIds = [
-                ...new Set(baseBookings
-                    .map((b) => {
-                    if (!b.productId)
-                        return null;
-                    return typeof b.productId === "string"
-                        ? new mongoose_1.default.Types.ObjectId(b.productId)
-                        : b.productId;
-                })
-                    .filter(Boolean)),
-            ];
-            // Search in orders and products
-            const { Order } = await Promise.resolve().then(() => __importStar(require("../models/Order")));
-            const { Product } = await Promise.resolve().then(() => __importStar(require("../models/Product")));
-            const matchingOrders = await Order.find({
-                _id: { $in: orderIds },
-                $or: [
-                    { customerName: { $regex: searchTerm, $options: "i" } },
-                    { customerPhone: { $regex: searchTerm, $options: "i" } },
-                ],
-            })
-                .select("_id")
-                .lean();
-            const matchingProducts = await Product.find({
-                _id: { $in: productIds },
-                title: { $regex: searchTerm, $options: "i" },
-            })
-                .select("_id")
-                .lean();
-            const matchingOrderIds = new Set(matchingOrders.map((o) => o._id.toString()));
-            const matchingProductIds = new Set(matchingProducts.map((p) => p._id.toString()));
-            // Filter bookings that match either order or product
-            const matchingBookingIds = baseBookings
-                .filter((b) => {
-                const orderId = b.orderId?.toString();
-                const productId = b.productId?.toString();
-                return ((orderId && matchingOrderIds.has(orderId)) ||
-                    (productId && matchingProductIds.has(productId)));
-            })
-                .map((b) => b._id);
-            if (matchingBookingIds.length === 0) {
-                return [];
+            // Get total count
+            const countPipeline = [...pipeline, { $count: "total" }];
+            const countResult = await Booking_1.Booking.aggregate(countPipeline);
+            const total = countResult.length > 0 ? countResult[0].total : 0;
+            if (total === 0) {
+                return {
+                    data: [],
+                    pagination: pagination_1.PaginationHelper.getMeta(page, limit, 0),
+                };
             }
-            // Return full booking documents with population
-            return await Booking_1.Booking.find({ _id: { $in: matchingBookingIds } })
+            // Get paginated results
+            pipeline.push({ $skip: skip });
+            pipeline.push({ $limit: limit });
+            // Get booking IDs from aggregation
+            const bookingResults = await Booking_1.Booking.aggregate(pipeline);
+            const bookingIds = bookingResults.map((b) => b._id);
+            // Fetch full documents with proper population
+            const bookings = await Booking_1.Booking.find({ _id: { $in: bookingIds } })
                 .populate("productId")
                 .populate("categoryId")
                 .populate("orderId", "customerName customerPhone")
-                .sort({ fromDateTime: 1 });
+                .sort({ fromDateTime: 1 })
+                .lean();
+            const pagination = pagination_1.PaginationHelper.getMeta(page, limit, total);
+            return {
+                data: bookings,
+                pagination,
+            };
         }
-        // No search - use regular query
-        return await Booking_1.Booking.find(query)
-            .populate("productId")
-            .populate("categoryId")
-            .populate("orderId", "customerName customerPhone")
-            .sort({ fromDateTime: 1 });
+        // No search - use optimized regular query with pagination
+        const [total, bookings] = await Promise.all([
+            Booking_1.Booking.countDocuments(query),
+            Booking_1.Booking.find(query)
+                .populate("productId")
+                .populate("categoryId")
+                .populate("orderId", "customerName customerPhone")
+                .sort({ fromDateTime: 1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+        ]);
+        const pagination = pagination_1.PaginationHelper.getMeta(page, limit, total);
+        return {
+            data: bookings,
+            pagination,
+        };
     }
     async getBookingById(id, orgId) {
         const booking = await Booking_1.Booking.findOne({ _id: id, orgId })

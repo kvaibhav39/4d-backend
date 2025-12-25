@@ -42,16 +42,20 @@ export class OrderController {
     try {
       const orgId = req.user!.orgId;
       const { status, startDate, endDate, search } = req.query;
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
 
-      const orders = await orderService.listOrders({
+      const result = await orderService.listOrders({
         orgId,
         status: status as OrderStatus | undefined,
         startDate: startDate as string | undefined,
         endDate: endDate as string | undefined,
         search: search as string | undefined,
+        page,
+        limit,
       });
 
-      res.json(orders);
+      res.json(result);
     } catch (error) {
       console.error("List orders error", error);
       res.status(500).json({ message: "Internal server error" });

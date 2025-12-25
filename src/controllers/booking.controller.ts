@@ -31,17 +31,21 @@ export class BookingController {
     try {
       const orgId = req.user!.orgId;
       const { status, startDate, endDate, productId, search } = req.query;
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
 
-      const bookings = await bookingService.listBookings({
+      const result = await bookingService.listBookings({
         orgId,
         status: status as BookingStatus | undefined,
         startDate: startDate as string | undefined,
         endDate: endDate as string | undefined,
         productId: productId as string | undefined,
         search: search as string | undefined,
+        page,
+        limit,
       });
 
-      res.json(bookings);
+      res.json(result);
     } catch (error) {
       console.error("List bookings error", error);
       res.status(500).json({ message: "Internal server error" });

@@ -3,9 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductService = void 0;
 const Product_1 = require("../models/Product");
 const Booking_1 = require("../models/Booking");
+const pagination_1 = require("../types/pagination");
 class ProductService {
     async listProducts(filters) {
-        const { orgId, search, includeDeleted } = filters;
+        const { orgId, search, includeDeleted, page: rawPage, limit: rawLimit } = filters;
+        // Validate and set pagination params
+        const { page, limit } = pagination_1.PaginationHelper.validateParams(rawPage, rawLimit);
+        const skip = pagination_1.PaginationHelper.getSkip(page, limit);
+        // Build query
         const query = { orgId };
         // Only filter by isActive if we don't want to include deleted items
         if (!includeDeleted) {
@@ -17,18 +22,29 @@ class ProductService {
                 { code: { $regex: search, $options: "i" } },
             ];
         }
-        const products = await Product_1.Product.find(query)
-            .populate("categoryId")
-            .sort({ createdAt: -1 });
+        // Execute count and find in parallel for better performance
+        const [total, products] = await Promise.all([
+            Product_1.Product.countDocuments(query),
+            Product_1.Product.find(query)
+                .populate("categoryId")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean() // Use lean() for better performance since we're transforming anyway
+        ]);
         // Transform products to separate categoryId (string) and category (object)
-        return products.map((product) => {
-            const productObj = product.toObject();
-            if (productObj.categoryId && typeof productObj.categoryId === "object") {
-                productObj.category = productObj.categoryId;
-                productObj.categoryId = productObj.categoryId._id.toString();
+        const transformedProducts = products.map((product) => {
+            if (product.categoryId && typeof product.categoryId === "object") {
+                product.category = product.categoryId;
+                product.categoryId = product.categoryId._id.toString();
             }
-            return productObj;
+            return product;
         });
+        const pagination = pagination_1.PaginationHelper.getMeta(page, limit, total);
+        return {
+            data: transformedProducts,
+            pagination,
+        };
     }
     async getProductById(id, orgId) {
         const product = await Product_1.Product.findOne({

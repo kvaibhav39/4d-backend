@@ -10,12 +10,16 @@ class ProductController {
             const orgId = req.user.orgId;
             const search = req.query.search;
             const includeDeleted = req.query.includeDeleted === "true";
-            const products = await productService.listProducts({
+            const page = req.query.page ? parseInt(req.query.page, 10) : undefined;
+            const limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined;
+            const result = await productService.listProducts({
                 orgId,
                 search,
                 includeDeleted,
+                page,
+                limit,
             });
-            res.json(products);
+            res.json(result);
         }
         catch (error) {
             console.error("List products error", error);

@@ -3,6 +3,7 @@ import { Order, OrderStatus } from "../models/Order";
 import { Booking, BookingStatus, PaymentType } from "../models/Booking";
 import { Product } from "../models/Product";
 import { Organization } from "../models/Organization";
+import { PaginationHelper, PaginatedResponse } from "../types/pagination";
 
 export interface CreateOrderData {
   orgId: string;
@@ -33,6 +34,8 @@ export interface ListOrdersFilters {
   startDate?: string;
   endDate?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface CollectPaymentData {
@@ -212,11 +215,16 @@ export class OrderService {
   }
 
   /**
-   * List orders with filters
+   * List orders with filters and pagination
    */
-  async listOrders(filters: ListOrdersFilters) {
-    const { orgId, status, startDate, endDate, search } = filters;
+  async listOrders(filters: ListOrdersFilters): Promise<PaginatedResponse<any>> {
+    const { orgId, status, startDate, endDate, search, page: rawPage, limit: rawLimit } = filters;
 
+    // Validate and set pagination params
+    const { page, limit } = PaginationHelper.validateParams(rawPage, rawLimit);
+    const skip = PaginationHelper.getSkip(page, limit);
+
+    // Build query
     const query: any = { orgId };
 
     if (status) {
@@ -244,15 +252,29 @@ export class OrderService {
       }
     }
 
-    return await Order.find(query)
-      .populate({
-        path: "bookings",
-        populate: [
-          { path: "productId", select: "title code" },
-          { path: "categoryId", select: "name" },
-        ],
-      })
-      .sort({ createdAt: -1 });
+    // Execute count and find in parallel for better performance
+    const [total, orders] = await Promise.all([
+      Order.countDocuments(query),
+      Order.find(query)
+        .populate({
+          path: "bookings",
+          populate: [
+            { path: "productId", select: "title code" },
+            { path: "categoryId", select: "name" },
+          ],
+        })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean() // Use lean() for better performance
+    ]);
+
+    const pagination = PaginationHelper.getMeta(page, limit, total);
+
+    return {
+      data: orders,
+      pagination,
+    };
   }
 
   /**

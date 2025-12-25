@@ -9,30 +9,88 @@ const Booking_1 = require("../models/Booking");
 class DashboardService {
     async getStats(params) {
         const { orgId } = params;
-        // Get all bookings for overall statistics (not filtered by date)
-        const bookings = await Booking_1.Booking.find({
-            orgId,
+        // Use aggregation for efficient stats calculation instead of loading all bookings
+        const statsAgg = await Booking_1.Booking.aggregate([
+            {
+                $match: {
+                    orgId: new mongoose_1.default.Types.ObjectId(orgId),
+                },
+            },
+            {
+                $facet: {
+                    // Count by status
+                    statusCounts: [
+                        {
+                            $group: {
+                                _id: "$status",
+                                count: { $sum: 1 },
+                            },
+                        },
+                    ],
+                    // Total bookings count
+                    totalCount: [
+                        {
+                            $count: "total",
+                        },
+                    ],
+                    // Calculate total rent (excluding cancelled)
+                    totalRent: [
+                        {
+                            $match: {
+                                status: { $ne: "CANCELLED" },
+                            },
+                        },
+                        {
+                            $group: {
+                                _id: null,
+                                total: { $sum: "$decidedRent" },
+                            },
+                        },
+                    ],
+                    // Calculate total received (excluding cancelled)
+                    totalReceived: [
+                        {
+                            $match: {
+                                status: { $ne: "CANCELLED" },
+                            },
+                        },
+                        {
+                            $unwind: "$payments",
+                        },
+                        {
+                            $group: {
+                                _id: "$payments.type",
+                                total: { $sum: "$payments.amount" },
+                            },
+                        },
+                    ],
+                },
+            },
+        ]);
+        const result = statsAgg[0];
+        // Process status counts
+        const statusMap = new Map();
+        result.statusCounts.forEach((s) => {
+            statusMap.set(s._id, s.count);
+        });
+        // Calculate total received (payments - refunds)
+        let totalReceived = 0;
+        result.totalReceived.forEach((r) => {
+            if (r._id === "ADVANCE" || r._id === "PAYMENT_RECEIVED") {
+                totalReceived += r.total;
+            }
+            else if (r._id === "REFUND") {
+                totalReceived -= r.total;
+            }
         });
         const stats = {
-            totalBookings: bookings.length,
-            bookedCount: bookings.filter((b) => b.status === "BOOKED").length,
-            issuedCount: bookings.filter((b) => b.status === "ISSUED").length,
-            returnedCount: bookings.filter((b) => b.status === "RETURNED").length,
-            cancelledCount: bookings.filter((b) => b.status === "CANCELLED").length,
-            totalRent: bookings
-                .filter((b) => b.status !== "CANCELLED")
-                .reduce((sum, b) => sum + b.decidedRent, 0),
-            totalReceived: bookings
-                .filter((b) => b.status !== "CANCELLED")
-                .reduce((sum, booking) => {
-                const paid = booking.payments
-                    .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
-                    .reduce((s, p) => s + p.amount, 0) -
-                    booking.payments
-                        .filter((p) => p.type === "REFUND")
-                        .reduce((s, p) => s + p.amount, 0);
-                return sum + paid;
-            }, 0),
+            totalBookings: result.totalCount.length > 0 ? result.totalCount[0].total : 0,
+            bookedCount: statusMap.get("BOOKED") || 0,
+            issuedCount: statusMap.get("ISSUED") || 0,
+            returnedCount: statusMap.get("RETURNED") || 0,
+            cancelledCount: statusMap.get("CANCELLED") || 0,
+            totalRent: result.totalRent.length > 0 ? result.totalRent[0].total : 0,
+            totalReceived,
         };
         return stats;
     }
