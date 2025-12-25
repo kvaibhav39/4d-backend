@@ -30,6 +30,9 @@ async function createDatabaseIndexes() {
         await Order_1.Order.collection.createIndex({ orgId: 1, createdAt: -1 });
         await Order_1.Order.collection.createIndex({ orgId: 1, customerName: "text", customerPhone: "text" });
         await Order_1.Order.collection.createIndex({ customerPhone: 1 });
+        // Index for search optimization
+        await Order_1.Order.collection.createIndex({ orgId: 1, customerName: 1 });
+        await Order_1.Order.collection.createIndex({ orgId: 1, customerPhone: 1 });
         // Booking indexes
         await Booking_1.Booking.collection.createIndex({ orgId: 1, status: 1 });
         await Booking_1.Booking.collection.createIndex({ orgId: 1, productId: 1, status: 1 });

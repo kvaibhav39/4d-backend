@@ -79,17 +79,22 @@ class BookingService {
         }));
     }
     async listBookings(filters) {
-        const { orgId, status, startDate, endDate, productId, search, page: rawPage, limit: rawLimit } = filters;
+        const { orgId, status, startDate, endDate, productId, search, page: rawPage, limit: rawLimit, } = filters;
         // Validate and set pagination params
         const { page, limit } = pagination_1.PaginationHelper.validateParams(rawPage, rawLimit);
         const skip = pagination_1.PaginationHelper.getSkip(page, limit);
-        // Build base query
-        const query = { orgId };
+        // Build base query - convert orgId to ObjectId for proper matching
+        const query = {
+            orgId: typeof orgId === "string" ? new mongoose_1.default.Types.ObjectId(orgId) : orgId,
+        };
         if (status) {
             query.status = status;
         }
         if (productId) {
-            query.productId = productId;
+            query.productId =
+                typeof productId === "string"
+                    ? new mongoose_1.default.Types.ObjectId(productId)
+                    : productId;
         }
         if (startDate || endDate) {
             query.$or = [];
@@ -122,8 +127,8 @@ class BookingService {
         // If search is provided, use optimized aggregation pipeline
         if (search && search.trim()) {
             const searchTerm = search.trim();
-            // Use aggregation for efficient searching with joins
-            const pipeline = [
+            // Build base pipeline stages with optimized projections
+            const basePipeline = [
                 { $match: query },
                 {
                     $lookup: {
@@ -131,6 +136,21 @@ class BookingService {
                         localField: "orderId",
                         foreignField: "_id",
                         as: "order",
+                        pipeline: [
+                            {
+                                $project: {
+                                    _id: 0,
+                                    customerName: 1,
+                                    customerPhone: 1,
+                                },
+                            },
+                        ],
+                    },
+                },
+                {
+                    $unwind: {
+                        path: "$order",
+                        preserveNullAndEmptyArrays: false,
                     },
                 },
                 {
@@ -139,35 +159,73 @@ class BookingService {
                         localField: "productId",
                         foreignField: "_id",
                         as: "product",
+                        pipeline: [
+                            {
+                                $project: {
+                                    _id: 0,
+                                    title: 1,
+                                },
+                            },
+                        ],
+                    },
+                },
+                {
+                    $unwind: {
+                        path: "$product",
+                        preserveNullAndEmptyArrays: false,
                     },
                 },
                 {
                     $match: {
                         $or: [
                             { "order.customerName": { $regex: searchTerm, $options: "i" } },
-                            { "order.customerPhone": { $regex: searchTerm, $options: "i" } },
+                            {
+                                $and: [
+                                    {
+                                        "order.customerPhone": { $exists: true, $nin: [null, ""] },
+                                    },
+                                    {
+                                        "order.customerPhone": {
+                                            $regex: searchTerm,
+                                            $options: "i",
+                                        },
+                                    },
+                                ],
+                            },
                             { "product.title": { $regex: searchTerm, $options: "i" } },
                         ],
                     },
                 },
-                { $sort: { fromDateTime: 1 } },
             ];
-            // Get total count
-            const countPipeline = [...pipeline, { $count: "total" }];
-            const countResult = await Booking_1.Booking.aggregate(countPipeline);
-            const total = countResult.length > 0 ? countResult[0].total : 0;
+            // Use $facet to get count and data in a single aggregation
+            const facetPipeline = [
+                ...basePipeline,
+                {
+                    $facet: {
+                        metadata: [{ $count: "total" }],
+                        data: [
+                            { $sort: { fromDateTime: 1 } },
+                            { $skip: skip },
+                            { $limit: limit },
+                            {
+                                $project: {
+                                    _id: 1,
+                                },
+                            },
+                        ],
+                    },
+                },
+            ];
+            const [result] = await Booking_1.Booking.aggregate(facetPipeline);
+            const total = result.metadata[0]?.total || 0;
             if (total === 0) {
                 return {
                     data: [],
                     pagination: pagination_1.PaginationHelper.getMeta(page, limit, 0),
                 };
             }
-            // Get paginated results
-            pipeline.push({ $skip: skip });
-            pipeline.push({ $limit: limit });
-            // Get booking IDs from aggregation
-            const bookingResults = await Booking_1.Booking.aggregate(pipeline);
-            const bookingIds = bookingResults.map((b) => b._id);
+            // Extract booking IDs from aggregation results
+            const bookingIds = result.data.map((b) => b._id);
             // Fetch full documents with proper population
             const bookings = await Booking_1.Booking.find({ _id: { $in: bookingIds } })
                 .populate("productId")
@@ -182,11 +240,12 @@ class BookingService {
             };
         }
         // No search - use optimized regular query with pagination
+        // Execute count and find in parallel for better performance
         const [total, bookings] = await Promise.all([
             Booking_1.Booking.countDocuments(query),
             Booking_1.Booking.find(query)
-                .populate("productId")
-                .populate("categoryId")
+                .populate("productId", "title code imageUrl defaultRent")
+                .populate("categoryId", "name")
                 .populate("orderId", "customerName customerPhone")
                 .sort({ fromDateTime: 1 })
                 .skip(skip)
