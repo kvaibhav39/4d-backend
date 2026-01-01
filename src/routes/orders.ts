@@ -9,7 +9,6 @@ import {
   createOrderSchema,
   updateOrderSchema,
   addBookingToOrderSchema,
-  collectPaymentSchema,
   cancelOrderSchema,
   getOrderParamsSchema,
   listOrdersQuerySchema,
@@ -58,13 +57,6 @@ router.post(
   validateParams(getOrderParamsSchema),
   validate(cancelOrderSchema),
   (req, res) => orderController.cancelOrder(req, res)
-);
-
-router.post(
-  "/:id/payments",
-  validateParams(getOrderParamsSchema),
-  validate(collectPaymentSchema),
-  (req, res) => orderController.collectPayment(req, res)
 );
 
 router.get("/:id/invoice", validateParams(getOrderParamsSchema), (req, res) =>

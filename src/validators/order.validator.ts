@@ -160,17 +160,6 @@ export const addBookingToOrderSchema = Joi.object({
   overrideConflicts: Joi.boolean().optional(),
 });
 
-export const collectPaymentSchema = Joi.object({
-  amount: Joi.number().min(0.01).required().messages({
-    "number.base": "Amount must be a number",
-    "number.min": "Amount must be greater than 0",
-    "any.required": "Amount is required",
-  }),
-  note: Joi.string().trim().max(500).allow("", null).optional().messages({
-    "string.max": "Note must not exceed 500 characters",
-  }),
-});
-
 export const cancelOrderSchema = Joi.object({
   refundAmount: Joi.number().min(0).optional().messages({
     "number.base": "Refund amount must be a number",

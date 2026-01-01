@@ -42,8 +42,12 @@ export class OrderController {
     try {
       const orgId = req.user!.orgId;
       const { status, startDate, endDate, search } = req.query;
-      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const page = req.query.page
+        ? parseInt(req.query.page as string, 10)
+        : undefined;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : undefined;
 
       const result = await orderService.listOrders({
         orgId,
@@ -208,42 +212,6 @@ export class OrderController {
         return res.status(400).json({ message: error.message });
       }
       console.error("Preview cancellation refund error", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-
-  async collectPayment(req: AuthRequest, res: Response) {
-    try {
-      const orgId = req.user!.orgId;
-      const { id } = req.params;
-      const { amount, note } = req.body;
-
-      const result = await orderService.collectOrderPayment(id, orgId, {
-        amount,
-        note,
-      });
-
-      res.json(result);
-    } catch (error: any) {
-      if (error.message === "Order not found") {
-        return res.status(404).json({ message: error.message });
-      }
-      if (error.message === "Cannot collect payment for cancelled order") {
-        return res.status(400).json({ message: error.message });
-      }
-      if (error.message === "No active bookings in order") {
-        return res.status(400).json({ message: error.message });
-      }
-      if (error.message === "Total rent is zero, cannot distribute payment") {
-        return res.status(400).json({ message: error.message });
-      }
-      if (
-        error.message.includes("All bookings") &&
-        error.message.includes("already fully paid")
-      ) {
-        return res.status(400).json({ message: error.message });
-      }
-      console.error("Collect payment error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }

@@ -39,11 +39,6 @@ export interface ListOrdersFilters {
   limit?: number;
 }
 
-export interface CollectPaymentData {
-  amount: number;
-  note?: string;
-}
-
 export interface InvoiceData {
   order: any;
   bookings: any[];
@@ -226,8 +221,18 @@ export class OrderService {
   /**
    * List orders with filters and pagination
    */
-  async listOrders(filters: ListOrdersFilters): Promise<PaginatedResponse<any>> {
-    const { orgId, status, startDate, endDate, search, page: rawPage, limit: rawLimit } = filters;
+  async listOrders(
+    filters: ListOrdersFilters
+  ): Promise<PaginatedResponse<any>> {
+    const {
+      orgId,
+      status,
+      startDate,
+      endDate,
+      search,
+      page: rawPage,
+      limit: rawLimit,
+    } = filters;
 
     // Validate and set pagination params
     const { page, limit } = PaginationHelper.validateParams(rawPage, rawLimit);
@@ -275,7 +280,7 @@ export class OrderService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean() // Use lean() for better performance
+        .lean(), // Use lean() for better performance
     ]);
 
     const pagination = PaginationHelper.getMeta(page, limit, total);
@@ -407,151 +412,6 @@ export class OrderService {
     await this.updateOrderStatus(orderId);
 
     return booking;
-  }
-
-  /**
-   * Collect payment at order level and distribute proportionally to bookings
-   */
-  async collectOrderPayment(
-    orderId: string,
-    orgId: string,
-    paymentData: CollectPaymentData
-  ) {
-    const order = await Order.findOne({ _id: orderId, orgId });
-    if (!order) {
-      throw new Error("Order not found");
-    }
-
-    if (order.status === "CANCELLED") {
-      throw new Error("Cannot collect payment for cancelled order");
-    }
-
-    const { amount, note } = paymentData;
-
-    // Get all active bookings
-    const activeBookings = await Booking.find({
-      orderId,
-      status: { $ne: "CANCELLED" },
-    });
-
-    if (activeBookings.length === 0) {
-      throw new Error("No active bookings in order");
-    }
-
-    // Calculate total rent of active bookings
-    const totalRent = activeBookings.reduce((sum, b) => sum + b.decidedRent, 0);
-
-    if (totalRent === 0) {
-      throw new Error("Total rent is zero, cannot distribute payment");
-    }
-
-    // Filter bookings that still have remaining amount to be paid
-    const bookingsNeedingPayment = activeBookings.filter((b) => {
-      const totalPaid =
-        b.payments
-          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
-          .reduce((sum, p) => sum + p.amount, 0) -
-        b.payments
-          .filter((p) => p.type === "REFUND")
-          .reduce((sum, p) => sum + p.amount, 0);
-      const remaining = b.decidedRent - totalPaid;
-      return remaining > 0;
-    });
-
-    if (bookingsNeedingPayment.length === 0) {
-      throw new Error("All bookings in this order are already fully paid");
-    }
-
-    // Calculate total rent of bookings that still need payment
-    const totalRentNeedingPayment = bookingsNeedingPayment.reduce(
-      (sum, b) => sum + b.decidedRent,
-      0
-    );
-
-    // Distribute payment proportionally only to bookings that need payment
-    let remainingAmount = amount;
-    const distributions: Array<{ bookingId: string; amount: number }> = [];
-
-    for (let i = 0; i < bookingsNeedingPayment.length; i++) {
-      const booking = bookingsNeedingPayment[i];
-      const percentage = booking.decidedRent / totalRentNeedingPayment;
-
-      // Calculate how much this booking still needs
-      const bookingTotalPaid =
-        booking.payments
-          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
-          .reduce((sum, p) => sum + p.amount, 0) -
-        booking.payments
-          .filter((p) => p.type === "REFUND")
-          .reduce((sum, p) => sum + p.amount, 0);
-      const bookingRemaining = booking.decidedRent - bookingTotalPaid;
-
-      // For the last booking, give it the remaining amount to avoid rounding issues
-      const calculatedAmount =
-        i === bookingsNeedingPayment.length - 1
-          ? remainingAmount
-          : Math.round(amount * percentage * 100) / 100;
-
-      // Don't pay more than what the booking needs
-      const distributedAmount = Math.min(
-        calculatedAmount,
-        bookingRemaining,
-        remainingAmount
-      );
-
-      if (distributedAmount > 0 && bookingRemaining > 0) {
-        // Add payment entry to booking
-        booking.payments.push({
-          type: "ADVANCE" as PaymentType,
-          amount: distributedAmount,
-          at: new Date(),
-          note:
-            note ||
-            `Order payment (${distributedAmount.toFixed(2)} of ${amount.toFixed(
-              2
-            )})`,
-        });
-
-        // Update booking amounts
-        const totalPaid =
-          booking.payments
-            .filter(
-              (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
-            )
-            .reduce((sum, p) => sum + p.amount, 0) -
-          booking.payments
-            .filter((p) => p.type === "REFUND")
-            .reduce((sum, p) => sum + p.amount, 0);
-
-        booking.advanceAmount = Math.max(booking.advanceAmount, totalPaid);
-        booking.remainingAmount = booking.decidedRent - totalPaid;
-
-        await booking.save();
-
-        distributions.push({
-          bookingId: booking._id.toString(),
-          amount: distributedAmount,
-        });
-
-        remainingAmount -= distributedAmount;
-      }
-    }
-
-    // Recalculate order totals
-    const totals = await this.calculateOrderTotals(orderId);
-    order.totalAmount = totals.totalAmount;
-    order.totalReceived = totals.totalReceived;
-    order.remainingAmount = totals.remainingAmount;
-    await order.save();
-
-    // Update order status
-    await this.updateOrderStatus(orderId);
-
-    return {
-      order,
-      distributions,
-      totalDistributed: amount - remainingAmount,
-    };
   }
 
   /**
