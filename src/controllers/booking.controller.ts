@@ -219,13 +219,19 @@ export class BookingController {
     try {
       const orgId = req.user!.orgId;
       const { id } = req.params;
-      const { refundAmount } = req.body;
+      const {
+        shouldTransfer,
+        transfers,
+        shouldRefund,
+        refundAmount,
+      } = req.body;
 
-      const booking = await bookingService.cancelBooking(
-        id,
-        orgId,
-        refundAmount
-      );
+      const booking = await bookingService.cancelBooking(id, orgId, {
+        shouldTransfer,
+        transfers,
+        shouldRefund,
+        refundAmount,
+      });
       res.json(booking);
     } catch (error: any) {
       if (error.message === "Booking not found") {
@@ -239,7 +245,9 @@ export class BookingController {
       }
       if (
         error.message.includes("Refund amount") ||
-        error.message.includes("cannot exceed maximum refund")
+        error.message.includes("cannot exceed") ||
+        error.message.includes("Transfer amount") ||
+        error.message.includes("Some transfer booking IDs")
       ) {
         return res.status(400).json({ message: error.message });
       }

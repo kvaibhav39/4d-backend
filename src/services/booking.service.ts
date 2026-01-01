@@ -474,7 +474,16 @@ export class BookingService {
   /**
    * Cancel a booking - only status change allowed via this method
    */
-  async cancelBooking(id: string, orgId: string, refundAmount?: number) {
+  async cancelBooking(
+    id: string,
+    orgId: string,
+    options?: {
+      shouldTransfer?: boolean;
+      transfers?: Array<{ bookingId: string; amount: number }>;
+      shouldRefund?: boolean;
+      refundAmount?: number;
+    }
+  ) {
     const booking = await Booking.findOne({ _id: id, orgId });
     if (!booking) {
       throw new Error("Booking not found");
@@ -489,17 +498,10 @@ export class BookingService {
       );
     }
 
-    // For cancellation, use refundAmount parameter if provided
-    // If not provided, it will be calculated automatically
-    const cancellationRefundAmount =
-      refundAmount !== undefined && refundAmount >= 0
-        ? refundAmount
-        : undefined;
-
     const refundInfo = await orderService.handleBookingCancellation(
       id,
       orgId,
-      cancellationRefundAmount
+      options
     );
     // The booking status is already set to CANCELLED by handleBookingCancellation
     const cancelledBooking = await Booking.findById(id)

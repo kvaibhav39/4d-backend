@@ -30,6 +30,7 @@ export interface IBooking extends Document {
   isConflictOverridden: boolean;
   additionalItemsDescription?: string;
   payments: IPaymentEntry[];
+  pendingRefundAmount?: number; // Amount pending refund when booking is cancelled without refund
 }
 
 const PaymentSchema = new Schema<IPaymentEntry>(
@@ -66,6 +67,7 @@ const BookingSchema = new Schema<IBooking>(
     isConflictOverridden: { type: Boolean, default: false },
     additionalItemsDescription: { type: String },
     payments: { type: [PaymentSchema], default: [] },
+    pendingRefundAmount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

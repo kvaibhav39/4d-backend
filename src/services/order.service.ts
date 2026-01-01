@@ -56,15 +56,23 @@ export class OrderService {
   /**
    * Calculate order totals based on active bookings
    */
-  private async calculateOrderTotals(orderId: string): Promise<{
+  private async calculateOrderTotals(
+    orderId: string,
+    session?: mongoose.ClientSession
+  ): Promise<{
     totalAmount: number;
     totalReceived: number;
     remainingAmount: number;
   }> {
-    const bookings = await Booking.find({
-      orderId,
-      status: { $ne: "CANCELLED" },
-    });
+    const bookings = session
+      ? await Booking.find({
+          orderId,
+          status: { $ne: "CANCELLED" },
+        }).session(session)
+      : await Booking.find({
+          orderId,
+          status: { $ne: "CANCELLED" },
+        });
 
     const totalAmount = bookings.reduce((sum, b) => sum + b.decidedRent, 0);
 
@@ -89,8 +97,13 @@ export class OrderService {
   /**
    * Update order status based on bookings and payments
    */
-  async updateOrderStatus(orderId: string): Promise<OrderStatus> {
-    const order = await Order.findById(orderId);
+  async updateOrderStatus(
+    orderId: string,
+    session?: mongoose.ClientSession
+  ): Promise<OrderStatus> {
+    const order = session
+      ? await Order.findById(orderId).session(session)
+      : await Order.findById(orderId);
     if (!order) {
       throw new Error("Order not found");
     }
@@ -99,7 +112,9 @@ export class OrderService {
       return "CANCELLED";
     }
 
-    const bookings = await Booking.find({ orderId });
+    const bookings = session
+      ? await Booking.find({ orderId }).session(session)
+      : await Booking.find({ orderId });
 
     // If all bookings are cancelled, order should be cancelled
     if (
@@ -107,7 +122,7 @@ export class OrderService {
       bookings.every((b) => b.status === "CANCELLED")
     ) {
       order.status = "CANCELLED";
-      await order.save();
+      await order.save({ session });
       return "CANCELLED";
     }
 
@@ -118,7 +133,8 @@ export class OrderService {
     }
 
     const { totalAmount, totalReceived } = await this.calculateOrderTotals(
-      orderId
+      orderId,
+      session
     );
 
     // Check if all bookings are fully returned
@@ -144,7 +160,7 @@ export class OrderService {
 
     if (newStatus !== order.status) {
       order.status = newStatus;
-      await order.save();
+      await order.save({ session });
     }
 
     return newStatus;
@@ -420,175 +436,242 @@ export class OrderService {
   async handleBookingCancellation(
     bookingId: string,
     orgId: string,
-    refundAmount?: number
+    options?: {
+      shouldTransfer?: boolean;
+      transfers?: Array<{ bookingId: string; amount: number }>;
+      shouldRefund?: boolean;
+      refundAmount?: number;
+    }
   ) {
-    const booking = await Booking.findOne({ _id: bookingId, orgId });
-    if (!booking) {
-      throw new Error("Booking not found");
-    }
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    const orderId = booking.orderId.toString();
-    const order = await Order.findById(orderId);
-    if (!order) {
-      throw new Error("Order not found");
-    }
+    try {
+      const booking = await Booking.findOne({ _id: bookingId, orgId }).session(
+        session
+      );
+      if (!booking) {
+        throw new Error("Booking not found");
+      }
 
-    // Calculate total advance paid for this booking
-    const bookingAdvance =
-      booking.payments
-        .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
-        .reduce((sum, p) => sum + p.amount, 0) -
-      booking.payments
-        .filter((p) => p.type === "REFUND")
-        .reduce((sum, p) => sum + p.amount, 0);
+      const orderId = booking.orderId.toString();
+      const order = await Order.findById(orderId).session(session);
+      if (!order) {
+        throw new Error("Order not found");
+      }
 
-    // Get active bookings (excluding the one being cancelled)
-    const activeBookings = await Booking.find({
-      orderId,
-      status: { $ne: "CANCELLED" },
-      _id: { $ne: bookingId },
-    });
+      // Calculate total advance paid for this booking
+      const bookingAdvance =
+        booking.payments
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
+          .reduce((sum, p) => sum + p.amount, 0) -
+        booking.payments
+          .filter((p) => p.type === "REFUND")
+          .reduce((sum, p) => sum + p.amount, 0);
 
-    // Calculate how much can be transferred to other bookings
-    let totalTransferable = 0;
-    let finalRefundAmount =
-      refundAmount !== undefined ? refundAmount : bookingAdvance;
+      // Get active bookings (excluding the one being cancelled) for validation
+      const activeBookings = await Booking.find({
+        orderId,
+        status: { $ne: "CANCELLED" },
+        _id: { $ne: bookingId },
+      })
+        .populate("productId")
+        .session(session);
 
-    // Redistribute advance to remaining active bookings if any
-    if (activeBookings.length > 0 && bookingAdvance > 0) {
-      let remainingToDistribute = bookingAdvance;
+      // Default values
+      const shouldTransfer = options?.shouldTransfer ?? false;
+      const transfers = options?.transfers || [];
+      const shouldRefund = options?.shouldRefund ?? true;
+      const requestedRefundAmount = options?.refundAmount;
 
-      // Transfer only what each booking actually needs (no proportional distribution)
-      // Process all active bookings, transferring only the remaining amount each needs
-      for (let i = 0; i < activeBookings.length; i++) {
-        const activeBooking = activeBookings[i];
+      let totalTransferred = 0;
+      let remainingAfterTransfer = bookingAdvance;
 
-        // Calculate how much this booking needs
-        const bookingRemaining =
-          activeBooking.decidedRent -
-          (activeBooking.payments
-            .filter(
-              (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
-            )
-            .reduce((sum, p) => sum + p.amount, 0) -
-            activeBooking.payments
-              .filter((p) => p.type === "REFUND")
-              .reduce((sum, p) => sum + p.amount, 0));
+      // Handle transfers if enabled
+      if (shouldTransfer && transfers.length > 0) {
+        // Validate all transfer booking IDs exist and are active
+        const transferBookingIds = transfers.map((t) => t.bookingId);
+        const validBookings = activeBookings.filter((b) =>
+          transferBookingIds.includes(b._id.toString())
+        );
 
-        // Only transfer what the booking actually needs (must be positive), up to what we have left
-        if (bookingRemaining > 0 && remainingToDistribute > 0) {
-          const distributedAmount = Math.min(
-            remainingToDistribute,
-            bookingRemaining
+        if (validBookings.length !== transfers.length) {
+          throw new Error(
+            "Some transfer booking IDs are invalid or not active"
           );
+        }
 
-          // Populate product to get title for transfer note
-          await activeBooking.populate("productId");
-          const product = activeBooking.productId as any;
+        // Process each transfer
+        for (const transfer of transfers) {
+          if (transfer.amount <= 0) continue;
+
+          const targetBooking = validBookings.find(
+            (b) => b._id.toString() === transfer.bookingId
+          );
+          if (!targetBooking) continue;
+
+          // Calculate how much this booking needs
+          const bookingRemaining =
+            targetBooking.decidedRent -
+            (targetBooking.payments
+              .filter(
+                (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
+              )
+              .reduce((sum, p) => sum + p.amount, 0) -
+              targetBooking.payments
+                .filter((p) => p.type === "REFUND")
+                .reduce((sum, p) => sum + p.amount, 0));
+
+          // Validate transfer amount doesn't exceed what booking needs
+          if (transfer.amount > bookingRemaining) {
+            throw new Error(
+              `Transfer amount (Rs.${transfer.amount.toFixed(
+                2
+              )}) exceeds remaining amount needed (Rs.${bookingRemaining.toFixed(
+                2
+              )}) for booking ${transfer.bookingId}`
+            );
+          }
+
+          // Validate we have enough to transfer
+          if (transfer.amount > remainingAfterTransfer) {
+            throw new Error(
+              `Transfer amount (Rs.${transfer.amount.toFixed(
+                2
+              )}) exceeds available amount (Rs.${remainingAfterTransfer.toFixed(
+                2
+              )})`
+            );
+          }
+
+          const product = targetBooking.productId as any;
           const productTitle = product?.title || "Product";
 
           // Add payment entry to receiving booking
-          activeBooking.payments.push({
+          targetBooking.payments.push({
             type: "ADVANCE" as PaymentType,
-            amount: distributedAmount,
+            amount: transfer.amount,
             at: new Date(),
             note: `Advance redistributed from cancelled booking #${bookingId}`,
           });
 
           const totalPaid =
-            activeBooking.payments
+            targetBooking.payments
               .filter(
                 (p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED"
               )
               .reduce((sum, p) => sum + p.amount, 0) -
-            activeBooking.payments
+            targetBooking.payments
               .filter((p) => p.type === "REFUND")
               .reduce((sum, p) => sum + p.amount, 0);
 
-          activeBooking.advanceAmount = Math.max(
-            activeBooking.advanceAmount,
+          targetBooking.advanceAmount = Math.max(
+            targetBooking.advanceAmount,
             totalPaid
           );
-          activeBooking.remainingAmount = activeBooking.decidedRent - totalPaid;
+          targetBooking.remainingAmount = targetBooking.decidedRent - totalPaid;
 
-          await activeBooking.save();
+          await targetBooking.save({ session });
 
           // Add payment entry to cancelled booking showing the transfer
           booking.payments.push({
             type: "REFUND" as PaymentType,
-            amount: distributedAmount,
+            amount: transfer.amount,
             at: new Date(),
-            note: `Rs.${distributedAmount.toFixed(
+            note: `Rs.${transfer.amount.toFixed(
               2
             )} transferred to ${productTitle}`,
           });
 
-          remainingToDistribute -= distributedAmount;
-          totalTransferable += distributedAmount;
+          totalTransferred += transfer.amount;
+          remainingAfterTransfer -= transfer.amount;
         }
       }
 
-      // If refund amount not provided, use remaining after transfer
-      if (refundAmount === undefined) {
-        finalRefundAmount = remainingToDistribute;
+      // Calculate final refund amount
+      let finalRefundAmount = 0;
+      let pendingRefundAmount = 0;
+
+      if (shouldRefund) {
+        // User wants to provide refund
+        if (requestedRefundAmount !== undefined) {
+          finalRefundAmount = requestedRefundAmount;
+        } else {
+          // Default to remaining after transfer
+          finalRefundAmount = remainingAfterTransfer;
+        }
+
+        // Validate refund amount
+        if (finalRefundAmount > remainingAfterTransfer) {
+          throw new Error(
+            `Refund amount (Rs.${finalRefundAmount.toFixed(
+              2
+            )}) cannot exceed available amount (Rs.${remainingAfterTransfer.toFixed(
+              2
+            )}) after transfers.`
+          );
+        }
+        if (finalRefundAmount < 0) {
+          throw new Error("Refund amount cannot be negative");
+        }
+
+        // Create refund entry if amount > 0
+        if (finalRefundAmount > 0) {
+          booking.payments.push({
+            type: "REFUND" as PaymentType,
+            amount: finalRefundAmount,
+            at: new Date(),
+            note: "Refund for cancelled booking",
+          });
+        }
+      } else {
+        // User doesn't want to provide refund - mark as pending
+        pendingRefundAmount = remainingAfterTransfer;
+        booking.pendingRefundAmount = pendingRefundAmount;
       }
+
+      // Recalculate booking amounts after all transfers and refunds
+      const totalPaidAfterRefund =
+        booking.payments
+          .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
+          .reduce((sum, p) => sum + p.amount, 0) -
+        booking.payments
+          .filter((p) => p.type === "REFUND")
+          .reduce((sum, p) => sum + p.amount, 0);
+
+      booking.advanceAmount = Math.max(0, totalPaidAfterRefund);
+      booking.remainingAmount = booking.decidedRent - totalPaidAfterRefund;
+
+      // Update booking status to cancelled
+      booking.status = "CANCELLED";
+      await booking.save({ session });
+
+      // Recalculate order totals
+      const totals = await this.calculateOrderTotals(orderId, session);
+      order.totalAmount = totals.totalAmount;
+      order.totalReceived = totals.totalReceived;
+      order.remainingAmount = totals.remainingAmount;
+      await order.save({ session });
+
+      // Update order status (may auto-cancel if all bookings cancelled)
+      await this.updateOrderStatus(orderId, session);
+
+      // Commit transaction
+      await session.commitTransaction();
+
+      return {
+        refundAmount: Math.max(0, finalRefundAmount),
+        redistributed: totalTransferred,
+        pendingRefundAmount: pendingRefundAmount,
+      };
+    } catch (error) {
+      // Abort transaction on error
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      // End session
+      session.endSession();
     }
-
-    // Validate refund amount
-    const maxRefund = bookingAdvance - totalTransferable;
-    if (finalRefundAmount > maxRefund) {
-      throw new Error(
-        `Refund amount (Rs.${finalRefundAmount.toFixed(
-          2
-        )}) cannot exceed maximum refund (Rs.${maxRefund.toFixed(
-          2
-        )}) after transfers.`
-      );
-    }
-    if (finalRefundAmount < 0) {
-      throw new Error("Refund amount cannot be negative");
-    }
-
-    // If there's a refund amount, create refund entry in the cancelled booking's payment history
-    if (finalRefundAmount > 0) {
-      booking.payments.push({
-        type: "REFUND" as PaymentType,
-        amount: finalRefundAmount,
-        at: new Date(),
-        note: "Refund for cancelled booking",
-      });
-    }
-
-    // Recalculate booking amounts after all transfers and refunds
-    const totalPaidAfterRefund =
-      booking.payments
-        .filter((p) => p.type === "ADVANCE" || p.type === "PAYMENT_RECEIVED")
-        .reduce((sum, p) => sum + p.amount, 0) -
-      booking.payments
-        .filter((p) => p.type === "REFUND")
-        .reduce((sum, p) => sum + p.amount, 0);
-
-    booking.advanceAmount = Math.max(0, totalPaidAfterRefund);
-    booking.remainingAmount = booking.decidedRent - totalPaidAfterRefund;
-
-    // Update booking status to cancelled
-    booking.status = "CANCELLED";
-    await booking.save();
-
-    // Recalculate order totals
-    const totals = await this.calculateOrderTotals(orderId);
-    order.totalAmount = totals.totalAmount;
-    order.totalReceived = totals.totalReceived;
-    order.remainingAmount = totals.remainingAmount;
-    await order.save();
-
-    // Update order status (may auto-cancel if all bookings cancelled)
-    await this.updateOrderStatus(orderId);
-
-    return {
-      refundAmount: Math.max(0, finalRefundAmount),
-      redistributed: totalTransferable,
-    };
   }
 
   /**
@@ -605,6 +688,7 @@ export class OrderService {
       bookingId: string;
       productTitle?: string;
       amount: number;
+      maxTransferable: number;
     }>;
   }> {
     const booking = await Booking.findOne({ _id: bookingId, orgId });
@@ -632,13 +716,16 @@ export class OrderService {
       orderId,
       status: { $ne: "CANCELLED" },
       _id: { $ne: bookingId },
-    });
+    })
+      .populate("productId")
+      .sort({ createdAt: 1 });
 
     let refundAmount = bookingAdvance;
     const transfers: Array<{
       bookingId: string;
       productTitle?: string;
       amount: number;
+      maxTransferable: number;
     }> = [];
 
     // Calculate how much can be redistributed to remaining active bookings
@@ -649,9 +736,6 @@ export class OrderService {
       // Process all active bookings, transferring only the remaining amount each needs
       for (let i = 0; i < activeBookings.length; i++) {
         const activeBooking = activeBookings[i];
-
-        // Populate product to get title
-        await activeBooking.populate("productId");
         const product = activeBooking.productId as any;
 
         // Calculate how much this booking needs
@@ -668,7 +752,7 @@ export class OrderService {
 
         // Only transfer what the booking actually needs (must be positive), up to what we have left
         if (bookingRemaining > 0 && remainingToDistribute > 0) {
-          const distributedAmount = Math.min(
+          const maxTransferable = Math.min(
             remainingToDistribute,
             bookingRemaining
           );
@@ -676,9 +760,9 @@ export class OrderService {
           transfers.push({
             bookingId: activeBooking._id.toString(),
             productTitle: product?.title || "Product",
-            amount: distributedAmount,
+            amount: 0, // Default to 0, user will select
+            maxTransferable,
           });
-          remainingToDistribute -= distributedAmount;
         }
       }
 

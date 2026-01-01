@@ -103,10 +103,37 @@ export const returnProductSchema = Joi.object({
 });
 
 export const cancelBookingSchema = Joi.object({
+  shouldTransfer: Joi.boolean().optional(),
+  transfers: Joi.array()
+    .items(
+      Joi.object({
+        bookingId: Joi.string().pattern(objectIdPattern).required().messages({
+          "string.pattern.base": "Invalid booking ID format",
+          "any.required": "Booking ID is required",
+        }),
+        amount: Joi.number().min(0.01).required().messages({
+          "number.base": "Transfer amount must be a number",
+          "number.min": "Transfer amount must be greater than 0",
+          "any.required": "Transfer amount is required",
+        }),
+      })
+    )
+    .optional(),
+  shouldRefund: Joi.boolean().optional(),
   refundAmount: Joi.number().min(0).optional().messages({
     "number.min": "Refund amount must be positive or zero",
   }),
-});
+}).custom((value, helpers) => {
+  // If shouldTransfer is true, transfers array must be provided and not empty
+  if (value.shouldTransfer === true) {
+    if (!value.transfers || value.transfers.length === 0) {
+      return helpers.error("any.custom", {
+        message: "Transfers array is required when shouldTransfer is true",
+      });
+    }
+  }
+  return value;
+}, "Transfer validation");
 
 export const addPaymentSchema = Joi.object({
   type: Joi.string()
