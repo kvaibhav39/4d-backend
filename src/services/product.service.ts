@@ -74,18 +74,42 @@ export class ProductService {
     }
 
     // Execute count and find in parallel for better performance
+    // Sort: featured products first (by featuredOrder ascending), then non-featured (by createdAt descending)
     const [total, products] = await Promise.all([
       Product.countDocuments(query),
       Product.find(query)
         .populate("categoryId")
-        .sort({ createdAt: -1 })
+        .sort({
+          // Sort by featuredOrder ascending, but nulls come last
+          // Using $ifNull to handle nulls - nulls will be treated as a large number
+          featuredOrder: 1,
+        })
+        .collation({ locale: "en", numericOrdering: true })
         .skip(skip)
         .limit(limit)
         .lean(), // Use lean() for better performance since we're transforming anyway
     ]);
 
+    // Post-process to ensure correct order: featured products first (ascending), then non-featured
+    const sortedProducts = products.sort((a: any, b: any) => {
+      // If both have featuredOrder, sort by featuredOrder ascending
+      if (a.featuredOrder != null && b.featuredOrder != null) {
+        return a.featuredOrder - b.featuredOrder;
+      }
+      // If only a has featuredOrder, a comes first
+      if (a.featuredOrder != null && b.featuredOrder == null) {
+        return -1;
+      }
+      // If only b has featuredOrder, b comes first
+      if (a.featuredOrder == null && b.featuredOrder != null) {
+        return 1;
+      }
+      // If neither has featuredOrder, sort by createdAt descending
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     // Transform products to separate categoryId (string) and category (object)
-    const transformedProducts = products.map((product: any) => {
+    const transformedProducts = sortedProducts.map((product: any) => {
       if (product.categoryId && typeof product.categoryId === "object") {
         product.category = product.categoryId;
         product.categoryId = product.categoryId._id.toString();
@@ -146,6 +170,25 @@ export class ProductService {
       throw new Error("Product code already exists");
     }
 
+    // Auto-assign featuredOrder if provided (product should be featured)
+    let finalFeaturedOrder: number | undefined = undefined;
+    if (featuredOrder !== undefined && featuredOrder !== null) {
+      // Find the maximum featuredOrder for this organization
+      const maxFeatured = await Product.findOne({
+        orgId,
+        featuredOrder: { $ne: null },
+        isActive: { $ne: false },
+      })
+        .sort({ featuredOrder: -1 })
+        .select("featuredOrder")
+        .lean();
+
+      // Set to max + 1, or 1 if it's the first featured product
+      finalFeaturedOrder = maxFeatured?.featuredOrder
+        ? maxFeatured.featuredOrder + 1
+        : 1;
+    }
+
     const product = await Product.create({
       orgId,
       title,
@@ -156,7 +199,7 @@ export class ProductService {
       color,
       size,
       imageUrl,
-      featuredOrder: featuredOrder || undefined,
+      featuredOrder: finalFeaturedOrder,
     });
 
     const populatedProduct = await Product.findById(product._id).populate(
