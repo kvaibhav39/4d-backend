@@ -816,6 +816,26 @@ export class BookingService {
         );
       }
 
+      // If booking has pendingRefundAmount, validate and reduce it
+      if (booking.pendingRefundAmount && booking.pendingRefundAmount > 0) {
+        if (paymentData.amount > booking.pendingRefundAmount) {
+          throw new Error(
+            `Refund amount (Rs.${paymentData.amount.toFixed(
+              2
+            )}) cannot exceed pending refund amount (Rs.${booking.pendingRefundAmount.toFixed(
+              2
+            )}). Maximum refund allowed: Rs.${booking.pendingRefundAmount.toFixed(
+              2
+            )}.`
+          );
+        }
+        // Reduce pending refund amount
+        booking.pendingRefundAmount = Math.max(
+          0,
+          booking.pendingRefundAmount - paymentData.amount
+        );
+      }
+
       // Add refund payment (amount already validated above)
       booking.payments.push({
         type: "REFUND",
