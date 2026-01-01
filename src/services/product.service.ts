@@ -3,6 +3,11 @@ import { Product } from "../models/Product";
 import { Booking } from "../models/Booking";
 import { PaginationHelper, PaginatedResponse } from "../types/pagination";
 
+export interface BulkUpdateProductOrderItem {
+  id: string;
+  featuredOrder: number | null;
+}
+
 export interface CreateProductData {
   orgId: string;
   title: string;
@@ -13,6 +18,7 @@ export interface CreateProductData {
   color?: string;
   size?: string;
   imageUrl?: string;
+  featuredOrder?: number;
 }
 
 export interface UpdateProductData {
@@ -25,6 +31,7 @@ export interface UpdateProductData {
   size?: string;
   imageUrl?: string;
   isActive?: boolean;
+  featuredOrder?: number | null;
 }
 
 export interface ListProductsFilters {
@@ -36,9 +43,17 @@ export interface ListProductsFilters {
 }
 
 export class ProductService {
-  async listProducts(filters: ListProductsFilters): Promise<PaginatedResponse<any>> {
-    const { orgId, search, includeDeleted, page: rawPage, limit: rawLimit } = filters;
-    
+  async listProducts(
+    filters: ListProductsFilters
+  ): Promise<PaginatedResponse<any>> {
+    const {
+      orgId,
+      search,
+      includeDeleted,
+      page: rawPage,
+      limit: rawLimit,
+    } = filters;
+
     // Validate and set pagination params
     const { page, limit } = PaginationHelper.validateParams(rawPage, rawLimit);
     const skip = PaginationHelper.getSkip(page, limit);
@@ -66,7 +81,7 @@ export class ProductService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean() // Use lean() for better performance since we're transforming anyway
+        .lean(), // Use lean() for better performance since we're transforming anyway
     ]);
 
     // Transform products to separate categoryId (string) and category (object)
@@ -118,6 +133,7 @@ export class ProductService {
       color,
       size,
       imageUrl,
+      featuredOrder,
     } = data;
 
     // Check if product with same code exists
@@ -140,6 +156,7 @@ export class ProductService {
       color,
       size,
       imageUrl,
+      featuredOrder: featuredOrder || undefined,
     });
 
     const populatedProduct = await Product.findById(product._id).populate(
@@ -189,6 +206,10 @@ export class ProductService {
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.categoryId !== undefined) {
       updateData.categoryId = data.categoryId || null;
+    }
+    if (data.featuredOrder !== undefined) {
+      updateData.featuredOrder =
+        data.featuredOrder === null ? undefined : data.featuredOrder;
     }
 
     const updated = await Product.findOneAndUpdate(
@@ -323,5 +344,53 @@ export class ProductService {
 
       return bookingObj;
     });
+  }
+
+  async bulkUpdateProductOrder(
+    orgId: string,
+    updates: BulkUpdateProductOrderItem[]
+  ) {
+    // Verify all products belong to the organization
+    const productIds = updates.map((u) => new mongoose.Types.ObjectId(u.id));
+    const existingProducts = await Product.find({
+      _id: { $in: productIds },
+      orgId: new mongoose.Types.ObjectId(orgId),
+    });
+
+    if (existingProducts.length !== updates.length) {
+      throw new Error(
+        "Some products not found or don't belong to organization"
+      );
+    }
+
+    // Perform bulk updates using bulkWrite
+    // bulkWrite is atomic per document and works without replica sets
+    // All operations are executed in order, and if one fails, subsequent ones are skipped
+    const bulkOps = updates.map((update) => {
+      const updateDoc: any = {};
+      if (update.featuredOrder === null) {
+        updateDoc.$unset = { featuredOrder: "" };
+      } else {
+        updateDoc.$set = { featuredOrder: update.featuredOrder };
+      }
+
+      return {
+        updateOne: {
+          filter: {
+            _id: new mongoose.Types.ObjectId(update.id),
+            orgId: new mongoose.Types.ObjectId(orgId),
+          },
+          update: updateDoc,
+        },
+      };
+    });
+
+    const result = await Product.bulkWrite(bulkOps, { ordered: false });
+
+    return {
+      success: true,
+      updated: result.modifiedCount,
+      matched: result.matchedCount,
+    };
   }
 }

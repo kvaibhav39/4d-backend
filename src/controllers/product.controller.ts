@@ -11,8 +11,12 @@ export class ProductController {
       const orgId = req.user!.orgId;
       const search = req.query.search as string | undefined;
       const includeDeleted = req.query.includeDeleted === "true";
-      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const page = req.query.page
+        ? parseInt(req.query.page as string, 10)
+        : undefined;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : undefined;
 
       const result = await productService.listProducts({
         orgId,
@@ -47,8 +51,16 @@ export class ProductController {
   async createProduct(req: AuthRequest, res: Response) {
     try {
       const orgId = req.user!.orgId;
-      const { title, description, code, categoryId, defaultRent, color, size } =
-        req.body;
+      const {
+        title,
+        description,
+        code,
+        categoryId,
+        defaultRent,
+        color,
+        size,
+        featuredOrder,
+      } = req.body;
       const file = req.file;
 
       let imageUrl: string | undefined;
@@ -76,6 +88,7 @@ export class ProductController {
         color,
         size,
         imageUrl,
+        featuredOrder: featuredOrder ? parseInt(featuredOrder) : undefined,
       });
 
       res.status(201).json(product);
@@ -104,6 +117,7 @@ export class ProductController {
         color,
         size,
         isActive,
+        featuredOrder,
       } = req.body;
       const file = req.file;
 
@@ -141,6 +155,12 @@ export class ProductController {
         size,
         imageUrl,
         isActive,
+        featuredOrder:
+          featuredOrder !== undefined
+            ? featuredOrder === "" || featuredOrder === null
+              ? null
+              : parseInt(featuredOrder)
+            : undefined,
       });
 
       res.json(product);
@@ -208,6 +228,28 @@ export class ProductController {
         return res.status(404).json({ message: error.message });
       }
       console.error("Get product bookings error", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async bulkUpdateProductOrder(req: AuthRequest, res: Response) {
+    try {
+      const orgId = req.user!.orgId;
+      const { updates } = req.body;
+
+      if (!Array.isArray(updates) || updates.length === 0) {
+        return res.status(400).json({
+          message: "Updates array is required and must not be empty",
+        });
+      }
+
+      const result = await productService.bulkUpdateProductOrder(orgId, updates);
+      res.json(result);
+    } catch (error: any) {
+      if (error.message === "Some products not found or don't belong to organization") {
+        return res.status(400).json({ message: error.message });
+      }
+      console.error("Bulk update product order error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }

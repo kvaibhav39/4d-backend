@@ -42,6 +42,11 @@ export const createProductSchema = Joi.object({
   size: Joi.string().trim().max(50).allow("", null).optional().messages({
     "string.max": "Size must not exceed 50 characters",
   }),
+  featuredOrder: Joi.number().integer().min(0).allow(null).optional().messages({
+    "number.base": "Featured order must be a number",
+    "number.min": "Featured order must be 0 or greater",
+    "number.integer": "Featured order must be an integer",
+  }),
 });
 
 export const updateProductSchema = Joi.object({
@@ -81,6 +86,11 @@ export const updateProductSchema = Joi.object({
     "string.max": "Size must not exceed 50 characters",
   }),
   isActive: Joi.boolean().optional(),
+  featuredOrder: Joi.number().integer().min(0).allow(null).optional().messages({
+    "number.base": "Featured order must be a number",
+    "number.min": "Featured order must be 0 or greater",
+    "number.integer": "Featured order must be an integer",
+  }),
 });
 
 export const getProductParamsSchema = Joi.object({
@@ -101,4 +111,36 @@ export const getProductBookingsQuerySchema = Joi.object({
     "date.base": "Filter date must be a valid date",
     "date.format": "Filter date must be in ISO format",
   }),
+});
+
+export const bulkUpdateProductOrderSchema = Joi.object({
+  updates: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.string()
+          .pattern(objectIdPattern)
+          .required()
+          .messages({
+            "string.pattern.base": "Invalid product ID format",
+            "any.required": "Product ID is required",
+          }),
+        featuredOrder: Joi.number()
+          .integer()
+          .min(0)
+          .allow(null)
+          .required()
+          .messages({
+            "number.base": "Featured order must be a number or null",
+            "number.min": "Featured order must be 0 or greater",
+            "number.integer": "Featured order must be an integer",
+            "any.required": "Featured order is required",
+          }),
+      })
+    )
+    .min(1)
+    .required()
+    .messages({
+      "array.min": "At least one product update is required",
+      "any.required": "Updates array is required",
+    }),
 });

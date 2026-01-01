@@ -32,7 +32,135 @@ export interface PublicFeaturesResponse {
   pricing: PricingPlan[];
 }
 
+import { Request } from "express";
+import { extractSubdomain } from "../utils/subdomain";
+import { Organization } from "../models/Organization";
+import { Product } from "../models/Product";
+import { Category } from "../models/Category";
+
 export class PublicService {
+  async getOrgBySubdomain(req: Request) {
+    const subdomain = extractSubdomain(req);
+    if (!subdomain) {
+      throw new Error("Subdomain is required");
+    }
+
+    const organization = await Organization.findOne({ subdomain });
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
+    return {
+      id: organization._id.toString(),
+      name: organization.name,
+      code: organization.code,
+      subdomain: organization.subdomain,
+      instagram: organization.instagram,
+      facebook: organization.facebook,
+      contact: organization.contact,
+    };
+  }
+
+  async getPublicProducts(req: Request) {
+    const subdomain = extractSubdomain(req);
+    if (!subdomain) {
+      throw new Error("Subdomain is required");
+    }
+
+    const organization = await Organization.findOne({ subdomain });
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
+    // Get only active products
+    const products = await Product.find({
+      orgId: organization._id,
+      isActive: { $ne: false },
+    })
+      .populate("categoryId")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Transform products and filter only those with imageUrl
+    const transformedProducts = products
+      .filter(
+        (product: any) => product.imageUrl && product.imageUrl.trim() !== ""
+      )
+      .map((product: any) => {
+        const transformed: any = {
+          id: product._id.toString(),
+          title: product.title,
+          description: product.description,
+          code: product.code,
+          defaultRent: product.defaultRent,
+          color: product.color,
+          size: product.size,
+          imageUrl: product.imageUrl,
+          featuredOrder: product.featuredOrder,
+        };
+
+        if (product.categoryId && typeof product.categoryId === "object") {
+          transformed.category = {
+            id: product.categoryId._id.toString(),
+            name: product.categoryId.name,
+            description: product.categoryId.description,
+          };
+          transformed.categoryId = product.categoryId._id.toString();
+        }
+
+        return transformed;
+      });
+
+    // Separate featured and regular products
+    // Only top 5 featured products (sorted by featuredOrder) with imageUrl
+    const allFeatured = transformedProducts
+      .filter((p: any) => p.featuredOrder != null)
+      .sort(
+        (a: any, b: any) => (a.featuredOrder || 0) - (b.featuredOrder || 0)
+      );
+
+    const featuredProducts = allFeatured.slice(0, 5);
+
+    // Get IDs of featured products to exclude from regular
+    const featuredIds = new Set(featuredProducts.map((p: any) => p.id));
+
+    // All other products (not in top 5 featured) are regular products
+    const regularProducts = transformedProducts.filter(
+      (p: any) => !featuredIds.has(p.id)
+    );
+
+    return {
+      featured: featuredProducts,
+      regular: regularProducts,
+    };
+  }
+
+  async getPublicCategories(req: Request) {
+    const subdomain = extractSubdomain(req);
+    if (!subdomain) {
+      throw new Error("Subdomain is required");
+    }
+
+    const organization = await Organization.findOne({ subdomain });
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
+    // Get only active categories
+    const categories = await Category.find({
+      orgId: organization._id,
+      isActive: { $ne: false },
+    })
+      .sort({ name: 1 })
+      .lean();
+
+    return categories.map((category: any) => ({
+      id: category._id.toString(),
+      name: category.name,
+      description: category.description,
+    }));
+  }
+
   getFeatures(): PublicFeaturesResponse {
     return {
       features: [

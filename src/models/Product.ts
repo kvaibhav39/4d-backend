@@ -11,6 +11,7 @@ export interface IProduct extends Document {
   size?: string;
   imageUrl?: string;
   isActive: boolean;
+  featuredOrder?: number;
 }
 
 const ProductSchema = new Schema<IProduct>(
@@ -25,6 +26,7 @@ const ProductSchema = new Schema<IProduct>(
     size: { type: String },
     imageUrl: { type: String },
     isActive: { type: Boolean, default: true },
+    featuredOrder: { type: Number, required: false },
   },
   { timestamps: true }
 );

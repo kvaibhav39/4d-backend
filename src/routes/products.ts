@@ -11,6 +11,7 @@ import {
   getProductParamsSchema,
   listProductsQuerySchema,
   getProductBookingsQuerySchema,
+  bulkUpdateProductOrderSchema,
 } from "../validators/product.validator";
 import { ProductController } from "../controllers/product.controller";
 import { upload } from "../middleware/upload";
@@ -58,6 +59,12 @@ router.get(
   validateParams(getProductParamsSchema),
   validateQuery(getProductBookingsQuerySchema),
   (req, res) => productController.getProductBookings(req, res)
+);
+
+router.post(
+  "/bulk-update-order",
+  validate(bulkUpdateProductOrderSchema),
+  (req, res) => productController.bulkUpdateProductOrder(req, res)
 );
 
 export default router;
