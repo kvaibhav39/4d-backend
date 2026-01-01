@@ -7,10 +7,10 @@ const authService = new AuthService();
 export class AuthController {
   async login(req: Request, res: Response) {
     try {
-      const result = await authService.login(req.body);
+      const result = await authService.login(req, req.body);
       res.json(result);
     } catch (error: any) {
-      if (error.message === "Invalid credentials") {
+      if (error.message === "Invalid credentials" || error.message === "Invalid subdomain") {
         return res.status(401).json({ message: error.message });
       }
       console.error("Login error", error);

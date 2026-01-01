@@ -23,12 +23,20 @@ async function setupTestData() {
       org = await Organization.create({
         name: "4D Choli",
         code: "4DCHOLI",
+        subdomain: "4dcholi",
         createdAt: new Date(),
         updatedAt: new Date(),
       });
       console.log("✅ Created organization:", org.name);
     } else {
-      console.log("✅ Organization already exists:", org.name);
+      // Update existing org to add subdomain if it doesn't have one
+      if (!org.subdomain) {
+        org.subdomain = "4dcholi";
+        await org.save();
+        console.log("✅ Updated organization with subdomain:", org.name);
+      } else {
+        console.log("✅ Organization already exists:", org.name);
+      }
     }
 
     // Check if user already exists

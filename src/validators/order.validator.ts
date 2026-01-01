@@ -1,6 +1,41 @@
 import Joi from "joi";
+import {
+  normalizePhoneNumber,
+  isValidPhoneNumberWithCountry,
+} from "../utils/phone";
 
 const objectIdPattern = /^[0-9a-fA-F]{24}$/;
+
+// Reusable phone number validation for customer phone (optional field)
+const customerPhoneValidation = Joi.string()
+  .trim()
+  .custom((value, helpers) => {
+    // Allow empty string or null (optional field)
+    if (!value || value === "" || value === null) {
+      return value;
+    }
+
+    // Normalize the phone number
+    const normalized = normalizePhoneNumber(value);
+    if (!normalized) {
+      return helpers.error("string.phoneInvalid");
+    }
+
+    // Validate with strict country-specific rules
+    if (!isValidPhoneNumberWithCountry(normalized)) {
+      return helpers.error("string.phoneInvalid");
+    }
+
+    // Return normalized value
+    return normalized;
+  }, "Phone number validation")
+  .allow("", null)
+  .optional()
+  .messages({
+    "string.base": "Customer phone must be a string",
+    "string.phoneInvalid":
+      "Phone number must be a valid international format with correct country code (e.g., +91 9876543210)",
+  });
 
 export const createOrderSchema = Joi.object({
   customerName: Joi.string().trim().min(1).max(200).required().messages({
@@ -9,14 +44,7 @@ export const createOrderSchema = Joi.object({
     "string.max": "Customer name must not exceed 200 characters",
     "any.required": "Customer name is required",
   }),
-  customerPhone: Joi.string()
-    .trim()
-    .max(20)
-    .allow("", null)
-    .optional()
-    .messages({
-      "string.max": "Customer phone must not exceed 20 characters",
-    }),
+  customerPhone: customerPhoneValidation,
   bookings: Joi.array()
     .items(
       Joi.object({
@@ -80,14 +108,7 @@ export const updateOrderSchema = Joi.object({
     "string.min": "Customer name must be at least 1 character",
     "string.max": "Customer name must not exceed 200 characters",
   }),
-  customerPhone: Joi.string()
-    .trim()
-    .max(20)
-    .allow("", null)
-    .optional()
-    .messages({
-      "string.max": "Customer phone must not exceed 20 characters",
-    }),
+  customerPhone: customerPhoneValidation,
 });
 
 export const addBookingToOrderSchema = Joi.object({

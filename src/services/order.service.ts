@@ -4,6 +4,7 @@ import { Booking, BookingStatus, PaymentType } from "../models/Booking";
 import { Product } from "../models/Product";
 import { Organization } from "../models/Organization";
 import { PaginationHelper, PaginatedResponse } from "../types/pagination";
+import { normalizePhoneNumber } from "../utils/phone";
 
 export interface CreateOrderData {
   orgId: string;
@@ -160,11 +161,19 @@ export class OrderService {
   async createOrder(data: CreateOrderData) {
     const { orgId, customerName, customerPhone, bookings = [] } = data;
 
+    // Phone number is already normalized and validated by Joi validator
+    // But we'll do a safety check to ensure it's in E.164 format
+    const normalizedPhone = customerPhone
+      ? customerPhone.startsWith("+")
+        ? customerPhone // Already normalized
+        : normalizePhoneNumber(customerPhone) // Fallback normalization
+      : null;
+
     // Create the order
     const order = await Order.create({
       orgId,
       customerName,
-      customerPhone,
+      customerPhone: normalizedPhone || undefined,
       status: "INITIATED",
       totalAmount: 0,
       totalReceived: 0,
@@ -290,7 +299,14 @@ export class OrderService {
       order.customerName = data.customerName;
     }
     if (data.customerPhone !== undefined) {
-      order.customerPhone = data.customerPhone;
+      // Phone number is already normalized and validated by Joi validator
+      // But we'll do a safety check to ensure it's in E.164 format
+      const normalizedPhone = data.customerPhone
+        ? data.customerPhone.startsWith("+")
+          ? data.customerPhone // Already normalized
+          : normalizePhoneNumber(data.customerPhone) // Fallback normalization
+        : null;
+      order.customerPhone = normalizedPhone || undefined;
     }
 
     return await order.save();
