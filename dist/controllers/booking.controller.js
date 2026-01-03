@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BookingController = void 0;
 const booking_service_1 = require("../services/booking.service");
+const errorLogger_1 = require("../utils/errorLogger");
 const bookingService = new booking_service_1.BookingService();
 class BookingController {
     async checkConflicts(req, res) {
@@ -51,7 +52,7 @@ class BookingController {
             res.json({ conflicts });
         }
         catch (error) {
-            console.error("Check conflicts error", error);
+            (0, errorLogger_1.logError)("Check conflicts error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -74,7 +75,7 @@ class BookingController {
             res.json(result);
         }
         catch (error) {
-            console.error("List bookings error", error);
+            (0, errorLogger_1.logError)("List bookings error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -89,7 +90,7 @@ class BookingController {
             if (error.message === "Booking not found") {
                 return res.status(404).json({ message: error.message });
             }
-            console.error("Get booking error", error);
+            (0, errorLogger_1.logError)("Get booking error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -155,7 +156,7 @@ class BookingController {
                     });
                 }
             }
-            console.error("Update booking error", error);
+            (0, errorLogger_1.logError)("Update booking error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -182,7 +183,7 @@ class BookingController {
                 error.message.includes('must be in "BOOKED" status')) {
                 return res.status(400).json({ message: error.message });
             }
-            console.error("Issue product error", error);
+            (0, errorLogger_1.logError)("Issue product error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -209,7 +210,7 @@ class BookingController {
                 error.message.includes('must be in "ISSUED" status')) {
                 return res.status(400).json({ message: error.message });
             }
-            console.error("Return product error", error);
+            (0, errorLogger_1.logError)("Return product error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -240,7 +241,7 @@ class BookingController {
                 error.message.includes("Some transfer booking IDs")) {
                 return res.status(400).json({ message: error.message });
             }
-            console.error("Cancel booking error", error);
+            (0, errorLogger_1.logError)("Cancel booking error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -257,7 +258,7 @@ class BookingController {
             if (error.message === "Booking not found") {
                 return res.status(404).json({ message: error.message });
             }
-            console.error("Preview cancellation refund error", error);
+            (0, errorLogger_1.logError)("Preview cancellation refund error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -290,7 +291,7 @@ class BookingController {
                     error.message.includes("exceed"))) {
                 return res.status(400).json({ message: error.message });
             }
-            console.error("Add payment error", error);
+            (0, errorLogger_1.logError)("Add payment error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }

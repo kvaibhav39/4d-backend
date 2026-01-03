@@ -13,6 +13,7 @@ const Booking_1 = require("../models/Booking");
 const Category_1 = require("../models/Category");
 const User_1 = require("../models/User");
 const Organization_1 = require("../models/Organization");
+const errorLogger_1 = require("../utils/errorLogger");
 /**
  * Create database indexes for optimal query performance
  * Call this function after database connection is established
@@ -106,7 +107,7 @@ async function createDatabaseIndexes() {
         console.log("Database indexes created successfully");
     }
     catch (error) {
-        console.error("Error creating database indexes:", error.message);
+        (0, errorLogger_1.logError)("Error creating database indexes", error);
         // Don't throw - indexes might already exist or be created by Mongoose
     }
 }
@@ -125,7 +126,7 @@ async function dropDatabaseIndexes() {
         console.log("Database indexes dropped successfully");
     }
     catch (error) {
-        console.error("Error dropping database indexes:", error.message);
+        (0, errorLogger_1.logError)("Error dropping database indexes", error);
     }
 }
 /**
@@ -138,7 +139,7 @@ async function listCollectionIndexes(collectionName) {
         return indexes;
     }
     catch (error) {
-        console.error(`Error listing indexes for ${collectionName}:`, error.message);
+        (0, errorLogger_1.logError)(`Error listing indexes for ${collectionName}`, error);
         return [];
     }
 }

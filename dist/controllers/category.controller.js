@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CategoryController = void 0;
 const category_service_1 = require("../services/category.service");
+const errorLogger_1 = require("../utils/errorLogger");
 const categoryService = new category_service_1.CategoryService();
 class CategoryController {
     async listCategories(req, res) {
@@ -17,7 +18,7 @@ class CategoryController {
             res.json(categories);
         }
         catch (error) {
-            console.error("List categories error", error);
+            (0, errorLogger_1.logError)("List categories error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -32,7 +33,7 @@ class CategoryController {
             if (error.message === "Category not found") {
                 return res.status(404).json({ message: error.message });
             }
-            console.error("Get category error", error);
+            (0, errorLogger_1.logError)("Get category error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -56,7 +57,7 @@ class CategoryController {
                     .status(400)
                     .json({ message: "Category name already exists" });
             }
-            console.error("Create category error", error);
+            (0, errorLogger_1.logError)("Create category error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -84,7 +85,7 @@ class CategoryController {
                     .status(400)
                     .json({ message: "Category name already exists" });
             }
-            console.error("Update category error", error);
+            (0, errorLogger_1.logError)("Update category error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -99,7 +100,7 @@ class CategoryController {
             if (error.message === "Category not found") {
                 return res.status(404).json({ message: error.message });
             }
-            console.error("Delete category error", error);
+            (0, errorLogger_1.logError)("Delete category error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -114,7 +115,7 @@ class CategoryController {
             if (error.message === "Category not found") {
                 return res.status(404).json({ message: error.message });
             }
-            console.error("Restore category error", error);
+            (0, errorLogger_1.logError)("Restore category error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }

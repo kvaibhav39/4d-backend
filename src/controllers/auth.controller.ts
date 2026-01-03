@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { AuthService } from "../services/auth.service";
+import { logError } from "../utils/errorLogger";
 
 const authService = new AuthService();
 
@@ -10,10 +11,13 @@ export class AuthController {
       const result = await authService.login(req, req.body);
       res.json(result);
     } catch (error: any) {
-      if (error.message === "Invalid credentials" || error.message === "Invalid subdomain") {
+      if (
+        error.message === "Invalid credentials" ||
+        error.message === "Invalid subdomain"
+      ) {
         return res.status(401).json({ message: error.message });
       }
-      console.error("Login error", error);
+      logError("Login error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -27,9 +31,8 @@ export class AuthController {
       if (error.message === "User not found") {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Get user error", error);
+      logError("Get user error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
 }
-

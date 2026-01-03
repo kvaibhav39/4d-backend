@@ -7,6 +7,7 @@ exports.S3Service = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const uuid_1 = require("uuid");
 const dotenv_1 = __importDefault(require("dotenv"));
+const errorLogger_1 = require("../utils/errorLogger");
 dotenv_1.default.config();
 const s3Client = new client_s3_1.S3Client({
     region: process.env.AWS_REGION || "us-east-1",
@@ -46,7 +47,7 @@ class S3Service {
             return url;
         }
         catch (error) {
-            console.error("Error uploading file to S3:", error);
+            (0, errorLogger_1.logError)("Error uploading file to S3", error);
             throw new Error("Failed to upload file to S3");
         }
     }

@@ -22,6 +22,7 @@ const bookings_1 = __importDefault(require("./routes/bookings"));
 const dashboard_1 = __importDefault(require("./routes/dashboard"));
 const public_1 = __importDefault(require("./routes/public"));
 const database_indexes_1 = require("./config/database-indexes");
+const errorLogger_1 = require("./utils/errorLogger");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
@@ -37,7 +38,7 @@ mongoose_1.default
     await (0, database_indexes_1.createDatabaseIndexes)();
 })
     .catch((err) => {
-    console.error("MongoDB connection error", err);
+    (0, errorLogger_1.logError)("MongoDB connection error", err);
     process.exit(1);
 });
 app.get("/health", (_req, res) => {
@@ -50,6 +51,23 @@ app.use("/api/orders", orders_1.default);
 app.use("/api/bookings", bookings_1.default);
 app.use("/api/dashboard", dashboard_1.default);
 app.use("/api/public", public_1.default);
+// Global error handler middleware - catches all errors
+app.use((err, req, res, next) => {
+    (0, errorLogger_1.logError)("Unhandled error in request", err);
+    res.status(err.status || 500).json({
+        message: err.message || "Internal server error",
+        timestamp: new Date().toISOString(),
+    });
+});
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+    (0, errorLogger_1.logError)("Uncaught Exception", error);
+    process.exit(1);
+});
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason, promise) => {
+    (0, errorLogger_1.logError)("Unhandled Rejection", reason);
+});
 app.listen(PORT, () => {
     console.log(`Backend server listening on port ${PORT}`);
 });

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { PublicService } from "../services/public.service";
+import { logError } from "../utils/errorLogger";
 
 const publicService = new PublicService();
 
@@ -15,7 +16,7 @@ export class PublicController {
       ) {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Get org error", error);
+      logError("Get org error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -31,7 +32,7 @@ export class PublicController {
       ) {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Get public products error", error);
+      logError("Get public products error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -47,7 +48,7 @@ export class PublicController {
       ) {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Get public categories error", error);
+      logError("Get public categories error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -57,7 +58,7 @@ export class PublicController {
       const features = publicService.getFeatures();
       res.json(features);
     } catch (error) {
-      console.error("Get features error", error);
+      logError("Get features error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -80,7 +81,7 @@ export class PublicController {
 
       res.json({ message: result.message });
     } catch (error) {
-      console.error("Submit contact error", error);
+      logError("Submit contact error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }

@@ -5,6 +5,7 @@ import { Booking } from "../models/Booking";
 import { Category } from "../models/Category";
 import { User } from "../models/User";
 import { Organization } from "../models/Organization";
+import { logError } from "../utils/errorLogger";
 
 /**
  * Create database indexes for optimal query performance
@@ -124,7 +125,7 @@ export async function createDatabaseIndexes(): Promise<void> {
 
     console.log("Database indexes created successfully");
   } catch (error: any) {
-    console.error("Error creating database indexes:", error.message);
+    logError("Error creating database indexes", error);
     // Don't throw - indexes might already exist or be created by Mongoose
   }
 }
@@ -145,7 +146,7 @@ export async function dropDatabaseIndexes(): Promise<void> {
 
     console.log("Database indexes dropped successfully");
   } catch (error: any) {
-    console.error("Error dropping database indexes:", error.message);
+    logError("Error dropping database indexes", error);
   }
 }
 
@@ -160,10 +161,7 @@ export async function listCollectionIndexes(
     const indexes = await collection.indexes();
     return indexes;
   } catch (error: any) {
-    console.error(
-      `Error listing indexes for ${collectionName}:`,
-      error.message
-    );
+    logError(`Error listing indexes for ${collectionName}`, error);
     return [];
   }
 }

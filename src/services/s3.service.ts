@@ -5,6 +5,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
+import { logError } from "../utils/errorLogger";
 
 dotenv.config();
 
@@ -55,7 +56,7 @@ export class S3Service {
       const url = `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${fileName}`;
       return url;
     } catch (error) {
-      console.error("Error uploading file to S3:", error);
+      logError("Error uploading file to S3", error);
       throw new Error("Failed to upload file to S3");
     }
   }

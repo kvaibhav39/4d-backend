@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { DashboardService } from "../services/dashboard.service";
+import { logError } from "../utils/errorLogger";
 
 const dashboardService = new DashboardService();
 
@@ -13,7 +14,7 @@ export class DashboardController {
       const stats = await dashboardService.getStats({ orgId, date });
       res.json(stats);
     } catch (error) {
-      console.error("Dashboard stats error", error);
+      logError("Dashboard stats error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -26,7 +27,7 @@ export class DashboardController {
       const bookings = await dashboardService.getBookingsForDate(orgId, date);
       res.json(bookings);
     } catch (error) {
-      console.error("Dashboard bookings error", error);
+      logError("Dashboard bookings error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -39,7 +40,7 @@ export class DashboardController {
       const bookings = await dashboardService.getRecentBookings(orgId, days);
       res.json(bookings);
     } catch (error) {
-      console.error("Dashboard recent bookings error", error);
+      logError("Dashboard recent bookings error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -52,7 +53,7 @@ export class DashboardController {
       const bookings = await dashboardService.getCustomerReturns(orgId, days);
       res.json(bookings);
     } catch (error) {
-      console.error("Dashboard customer returns error", error);
+      logError("Dashboard customer returns error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -65,7 +66,7 @@ export class DashboardController {
       const bookings = await dashboardService.getCustomerPickups(orgId, days);
       res.json(bookings);
     } catch (error) {
-      console.error("Dashboard customer pickups error", error);
+      logError("Dashboard customer pickups error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -78,7 +79,7 @@ export class DashboardController {
       const topProducts = await dashboardService.getTopProducts(orgId, limit);
       res.json(topProducts);
     } catch (error) {
-      console.error("Dashboard top products error", error);
+      logError("Dashboard top products error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }

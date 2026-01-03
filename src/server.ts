@@ -20,6 +20,7 @@ import dashboardRoutes from "./routes/dashboard";
 import publicRoutes from "./routes/public";
 
 import { createDatabaseIndexes } from "./config/database-indexes";
+import { logError } from "./utils/errorLogger";
 
 dotenv.config();
 
@@ -41,7 +42,7 @@ mongoose
     await createDatabaseIndexes();
   })
   .catch((err) => {
-    console.error("MongoDB connection error", err);
+    logError("MongoDB connection error", err);
     process.exit(1);
   });
 
@@ -56,6 +57,33 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/public", publicRoutes);
+
+// Global error handler middleware - catches all errors
+app.use(
+  (
+    err: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    logError("Unhandled error in request", err);
+    res.status(err.status || 500).json({
+      message: err.message || "Internal server error",
+      timestamp: new Date().toISOString(),
+    });
+  }
+);
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (error: Error) => {
+  logError("Uncaught Exception", error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
+  logError("Unhandled Rejection", reason);
+});
 
 app.listen(PORT, () => {
   console.log(`Backend server listening on port ${PORT}`);

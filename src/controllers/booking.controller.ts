@@ -2,6 +2,7 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { BookingService } from "../services/booking.service";
 import { BookingStatus, PaymentType } from "../models/Booking";
+import { logError } from "../utils/errorLogger";
 
 const bookingService = new BookingService();
 
@@ -22,7 +23,7 @@ export class BookingController {
 
       res.json({ conflicts });
     } catch (error) {
-      console.error("Check conflicts error", error);
+      logError("Check conflicts error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -47,7 +48,7 @@ export class BookingController {
 
       res.json(result);
     } catch (error) {
-      console.error("List bookings error", error);
+      logError("List bookings error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -63,7 +64,7 @@ export class BookingController {
       if (error.message === "Booking not found") {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Get booking error", error);
+      logError("Get booking error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -136,7 +137,7 @@ export class BookingController {
           });
         }
       }
-      console.error("Update booking error", error);
+      logError("Update booking error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -173,7 +174,7 @@ export class BookingController {
       ) {
         return res.status(400).json({ message: error.message });
       }
-      console.error("Issue product error", error);
+      logError("Issue product error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -210,7 +211,7 @@ export class BookingController {
       ) {
         return res.status(400).json({ message: error.message });
       }
-      console.error("Return product error", error);
+      logError("Return product error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -251,7 +252,7 @@ export class BookingController {
       ) {
         return res.status(400).json({ message: error.message });
       }
-      console.error("Cancel booking error", error);
+      logError("Cancel booking error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -273,7 +274,7 @@ export class BookingController {
       if (error.message === "Booking not found") {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Preview cancellation refund error", error);
+      logError("Preview cancellation refund error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -312,7 +313,7 @@ export class BookingController {
       ) {
         return res.status(400).json({ message: error.message });
       }
-      console.error("Add payment error", error);
+      logError("Add payment error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }

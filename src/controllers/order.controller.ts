@@ -2,6 +2,7 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { OrderService } from "../services/order.service";
 import { OrderStatus } from "../models/Order";
+import { logError } from "../utils/errorLogger";
 
 const orderService = new OrderService();
 
@@ -33,7 +34,7 @@ export class OrderController {
           conflicts: [],
         });
       }
-      console.error("Create order error", error);
+      logError("Create order error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -61,7 +62,7 @@ export class OrderController {
 
       res.json(result);
     } catch (error) {
-      console.error("List orders error", error);
+      logError("List orders error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -77,7 +78,7 @@ export class OrderController {
       if (error.message === "Order not found") {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Get order error", error);
+      logError("Get order error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -98,7 +99,7 @@ export class OrderController {
       if (error.message === "Order not found") {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Update order error", error);
+      logError("Update order error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -146,7 +147,7 @@ export class OrderController {
           conflicts: [],
         });
       }
-      console.error("Add booking to order error", error);
+      logError("Add booking to order error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -183,7 +184,7 @@ export class OrderController {
       ) {
         return res.status(400).json({ message: error.message });
       }
-      console.error("Cancel order error", error);
+      logError("Cancel order error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -211,7 +212,7 @@ export class OrderController {
       ) {
         return res.status(400).json({ message: error.message });
       }
-      console.error("Preview cancellation refund error", error);
+      logError("Preview cancellation refund error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -227,7 +228,7 @@ export class OrderController {
       if (error.message === "Order not found") {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Generate invoice error", error);
+      logError("Generate invoice error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }

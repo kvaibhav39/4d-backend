@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { CategoryService } from "../services/category.service";
+import { logError } from "../utils/errorLogger";
 
 const categoryService = new CategoryService();
 
@@ -18,7 +19,7 @@ export class CategoryController {
       });
       res.json(categories);
     } catch (error) {
-      console.error("List categories error", error);
+      logError("List categories error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -34,7 +35,7 @@ export class CategoryController {
       if (error.message === "Category not found") {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Get category error", error);
+      logError("Get category error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -60,7 +61,7 @@ export class CategoryController {
           .status(400)
           .json({ message: "Category name already exists" });
       }
-      console.error("Create category error", error);
+      logError("Create category error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -90,7 +91,7 @@ export class CategoryController {
           .status(400)
           .json({ message: "Category name already exists" });
       }
-      console.error("Update category error", error);
+      logError("Update category error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -106,7 +107,7 @@ export class CategoryController {
       if (error.message === "Category not found") {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Delete category error", error);
+      logError("Delete category error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -122,7 +123,7 @@ export class CategoryController {
       if (error.message === "Category not found") {
         return res.status(404).json({ message: error.message });
       }
-      console.error("Restore category error", error);
+      logError("Restore category error", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
