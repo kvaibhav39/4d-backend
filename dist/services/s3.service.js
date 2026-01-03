@@ -7,7 +7,7 @@ exports.S3Service = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const uuid_1 = require("uuid");
 const dotenv_1 = __importDefault(require("dotenv"));
-const errorLogger_1 = require("../utils/errorLogger");
+const logger_1 = require("../utils/logger");
 dotenv_1.default.config();
 const s3Client = new client_s3_1.S3Client({
     region: process.env.AWS_REGION || "us-east-1",
@@ -47,7 +47,7 @@ class S3Service {
             return url;
         }
         catch (error) {
-            (0, errorLogger_1.logError)("Error uploading file to S3", error);
+            (0, logger_1.logError)("Error uploading file to S3", error);
             throw new Error("Failed to upload file to S3");
         }
     }
@@ -58,7 +58,7 @@ class S3Service {
      */
     static async deleteFile(fileUrl) {
         if (!BUCKET_NAME) {
-            console.warn("AWS_S3_BUCKET_NAME is not configured, skipping file deletion");
+            (0, logger_1.logWarn)("AWS_S3_BUCKET_NAME is not configured, skipping file deletion");
             return false;
         }
         try {
@@ -66,7 +66,7 @@ class S3Service {
             // URL format: https://bucket-name.s3.region.amazonaws.com/key
             const urlParts = fileUrl.split(".amazonaws.com/");
             if (urlParts.length !== 2) {
-                console.warn("Invalid S3 URL format for deletion:", fileUrl);
+                (0, logger_1.logWarn)("Invalid S3 URL format for deletion:", fileUrl);
                 return false;
             }
             const key = urlParts[1];
@@ -81,10 +81,10 @@ class S3Service {
         catch (error) {
             // Log warning instead of throwing - deletion failure shouldn't block the update
             if (error.Code === "AccessDenied" || error.name === "AccessDenied") {
-                console.warn("S3 delete permission denied. The IAM user needs s3:DeleteObject permission. File may still exist:", fileUrl);
+                (0, logger_1.logWarn)("S3 delete permission denied. The IAM user needs s3:DeleteObject permission. File may still exist:", fileUrl);
             }
             else {
-                console.warn("Error deleting file from S3 (non-blocking):", error.message || error);
+                (0, logger_1.logWarn)("Error deleting file from S3 (non-blocking):", error.message || error);
             }
             return false;
         }

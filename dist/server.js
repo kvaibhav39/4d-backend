@@ -22,7 +22,7 @@ const bookings_1 = __importDefault(require("./routes/bookings"));
 const dashboard_1 = __importDefault(require("./routes/dashboard"));
 const public_1 = __importDefault(require("./routes/public"));
 const database_indexes_1 = require("./config/database-indexes");
-const errorLogger_1 = require("./utils/errorLogger");
+const logger_1 = require("./utils/logger");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
@@ -33,12 +33,12 @@ const PORT = process.env.PORT || 4000;
 mongoose_1.default
     .connect(MONGODB_URI)
     .then(async () => {
-    console.log("Connected to MongoDB");
+    (0, logger_1.logInfo)("Connected to MongoDB");
     // Create database indexes for optimal query performance
     await (0, database_indexes_1.createDatabaseIndexes)();
 })
     .catch((err) => {
-    (0, errorLogger_1.logError)("MongoDB connection error", err);
+    (0, logger_1.logError)("MongoDB connection error", err);
     process.exit(1);
 });
 app.get("/health", (_req, res) => {
@@ -53,7 +53,7 @@ app.use("/api/dashboard", dashboard_1.default);
 app.use("/api/public", public_1.default);
 // Global error handler middleware - catches all errors
 app.use((err, req, res, next) => {
-    (0, errorLogger_1.logError)("Unhandled error in request", err);
+    (0, logger_1.logError)("Unhandled error in request", err);
     res.status(err.status || 500).json({
         message: err.message || "Internal server error",
         timestamp: new Date().toISOString(),
@@ -61,13 +61,13 @@ app.use((err, req, res, next) => {
 });
 // Handle uncaught exceptions
 process.on("uncaughtException", (error) => {
-    (0, errorLogger_1.logError)("Uncaught Exception", error);
+    (0, logger_1.logError)("Uncaught Exception", error);
     process.exit(1);
 });
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (reason, promise) => {
-    (0, errorLogger_1.logError)("Unhandled Rejection", reason);
+    (0, logger_1.logError)("Unhandled Rejection", reason);
 });
 app.listen(PORT, () => {
-    console.log(`Backend server listening on port ${PORT}`);
+    (0, logger_1.logInfo)(`Backend server listening on port ${PORT}`);
 });

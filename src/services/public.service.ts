@@ -37,6 +37,7 @@ import { extractSubdomain } from "../utils/subdomain";
 import { Organization } from "../models/Organization";
 import { Product } from "../models/Product";
 import { Category } from "../models/Category";
+import { logInfo } from "../utils/logger";
 
 export class PublicService {
   async getOrgBySubdomain(req: Request) {
@@ -328,7 +329,7 @@ export class PublicService {
     }
 
     // TODO: Implement actual storage/email logic
-    console.log("Contact form submission:", data);
+    logInfo("Contact form submission:", data);
 
     return {
       success: true,

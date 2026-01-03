@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { AuthService } from "../services/auth.service";
-import { logError } from "../utils/errorLogger";
+import { logError } from "../utils/logger";
 
 const authService = new AuthService();
 

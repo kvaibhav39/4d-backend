@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { PublicService } from "../services/public.service";
-import { logError } from "../utils/errorLogger";
+import { logError } from "../utils/logger";
 
 const publicService = new PublicService();
 

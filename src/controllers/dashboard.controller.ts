@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { DashboardService } from "../services/dashboard.service";
-import { logError } from "../utils/errorLogger";
+import { logError } from "../utils/logger";
 
 const dashboardService = new DashboardService();
 

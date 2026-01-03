@@ -5,6 +5,7 @@ const subdomain_1 = require("../utils/subdomain");
 const Organization_1 = require("../models/Organization");
 const Product_1 = require("../models/Product");
 const Category_1 = require("../models/Category");
+const logger_1 = require("../utils/logger");
 class PublicService {
     async getOrgBySubdomain(req) {
         const subdomain = (0, subdomain_1.extractSubdomain)(req);
@@ -253,7 +254,7 @@ class PublicService {
             };
         }
         // TODO: Implement actual storage/email logic
-        console.log("Contact form submission:", data);
+        (0, logger_1.logInfo)("Contact form submission:", data);
         return {
             success: true,
             message: "Thank you for your interest! We'll get back to you soon.",

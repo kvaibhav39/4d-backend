@@ -2,7 +2,7 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { OrderService } from "../services/order.service";
 import { OrderStatus } from "../models/Order";
-import { logError } from "../utils/errorLogger";
+import { logError } from "../utils/logger";
 
 const orderService = new OrderService();
 

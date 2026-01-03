@@ -2,7 +2,7 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { BookingService } from "../services/booking.service";
 import { BookingStatus, PaymentType } from "../models/Booking";
-import { logError } from "../utils/errorLogger";
+import { logError } from "../utils/logger";
 
 const bookingService = new BookingService();
 

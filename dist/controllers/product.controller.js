@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductController = void 0;
 const product_service_1 = require("../services/product.service");
 const s3_service_1 = require("../services/s3.service");
-const errorLogger_1 = require("../utils/errorLogger");
+const logger_1 = require("../utils/logger");
 const productService = new product_service_1.ProductService();
 class ProductController {
     async listProducts(req, res) {
@@ -27,7 +27,7 @@ class ProductController {
             res.json(result);
         }
         catch (error) {
-            (0, errorLogger_1.logError)("List products error", error);
+            (0, logger_1.logError)("List products error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -42,7 +42,7 @@ class ProductController {
             if (error.message === "Product not found") {
                 return res.status(404).json({ message: error.message });
             }
-            (0, errorLogger_1.logError)("Get product error", error);
+            (0, logger_1.logError)("Get product error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -58,7 +58,7 @@ class ProductController {
                     imageUrl = await s3_service_1.S3Service.uploadFile(file, orgId, "products");
                 }
                 catch (uploadError) {
-                    (0, errorLogger_1.logError)("Image upload error", uploadError);
+                    (0, logger_1.logError)("Image upload error", uploadError);
                     return res.status(500).json({
                         message: "Failed to upload image",
                         error: uploadError.message,
@@ -86,7 +86,7 @@ class ProductController {
             if (error.code === 11000) {
                 return res.status(400).json({ message: "Product code already exists" });
             }
-            (0, errorLogger_1.logError)("Create product error", error);
+            (0, logger_1.logError)("Create product error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -111,7 +111,7 @@ class ProductController {
                     imageUrl = await s3_service_1.S3Service.uploadFile(file, orgId, "products");
                 }
                 catch (uploadError) {
-                    (0, errorLogger_1.logError)("Image upload error", uploadError);
+                    (0, logger_1.logError)("Image upload error", uploadError);
                     return res.status(500).json({
                         message: "Failed to upload image",
                         error: uploadError.message,
@@ -146,7 +146,7 @@ class ProductController {
             if (error.code === 11000) {
                 return res.status(400).json({ message: "Product code already exists" });
             }
-            (0, errorLogger_1.logError)("Update product error", error);
+            (0, logger_1.logError)("Update product error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -161,7 +161,7 @@ class ProductController {
             if (error.message === "Product not found") {
                 return res.status(404).json({ message: error.message });
             }
-            (0, errorLogger_1.logError)("Delete product error", error);
+            (0, logger_1.logError)("Delete product error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -176,7 +176,7 @@ class ProductController {
             if (error.message === "Product not found") {
                 return res.status(404).json({ message: error.message });
             }
-            (0, errorLogger_1.logError)("Restore product error", error);
+            (0, logger_1.logError)("Restore product error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -192,7 +192,7 @@ class ProductController {
             if (error.message === "Product not found") {
                 return res.status(404).json({ message: error.message });
             }
-            (0, errorLogger_1.logError)("Get product bookings error", error);
+            (0, logger_1.logError)("Get product bookings error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -212,7 +212,7 @@ class ProductController {
             if (error.message === "Some products not found or don't belong to organization") {
                 return res.status(400).json({ message: error.message });
             }
-            (0, errorLogger_1.logError)("Bulk update product order error", error);
+            (0, logger_1.logError)("Bulk update product order error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }

@@ -13,7 +13,7 @@ const Booking_1 = require("../models/Booking");
 const Category_1 = require("../models/Category");
 const User_1 = require("../models/User");
 const Organization_1 = require("../models/Organization");
-const errorLogger_1 = require("../utils/errorLogger");
+const logger_1 = require("../utils/logger");
 /**
  * Create database indexes for optimal query performance
  * Call this function after database connection is established
@@ -27,7 +27,7 @@ const errorLogger_1 = require("../utils/errorLogger");
  */
 async function createDatabaseIndexes() {
     try {
-        console.log("Creating database indexes...");
+        (0, logger_1.logInfo)("Creating database indexes...");
         // Helper function to safely create index with error handling
         const createIndexSafe = async (collection, indexSpec, options = {}) => {
             try {
@@ -40,7 +40,7 @@ async function createDatabaseIndexes() {
                 // Ignore errors for existing indexes with same spec
                 if (error.code === 85 || error.codeName === "IndexOptionsConflict") {
                     // Index exists with different options - log but don't fail
-                    console.warn(`Index conflict for ${JSON.stringify(indexSpec)}: ${error.message}`);
+                    (0, logger_1.logWarn)(`Index conflict for ${JSON.stringify(indexSpec)}: ${error.message}`);
                 }
                 else if (error.code !== 86 &&
                     error.codeName !== "IndexKeySpecsConflict") {
@@ -104,10 +104,10 @@ async function createDatabaseIndexes() {
         // Organization indexes
         // Note: { subdomain: 1 } unique index is already defined in Organization schema
         await createIndexSafe(Organization_1.Organization.collection, { subdomain: 1 }, { unique: true });
-        console.log("Database indexes created successfully");
+        (0, logger_1.logInfo)("Database indexes created successfully");
     }
     catch (error) {
-        (0, errorLogger_1.logError)("Error creating database indexes", error);
+        (0, logger_1.logError)("Error creating database indexes", error);
         // Don't throw - indexes might already exist or be created by Mongoose
     }
 }
@@ -117,16 +117,16 @@ async function createDatabaseIndexes() {
  */
 async function dropDatabaseIndexes() {
     try {
-        console.log("Dropping database indexes...");
+        (0, logger_1.logInfo)("Dropping database indexes...");
         await Product_1.Product.collection.dropIndexes();
         await Order_1.Order.collection.dropIndexes();
         await Booking_1.Booking.collection.dropIndexes();
         await Category_1.Category.collection.dropIndexes();
         await User_1.User.collection.dropIndexes();
-        console.log("Database indexes dropped successfully");
+        (0, logger_1.logInfo)("Database indexes dropped successfully");
     }
     catch (error) {
-        (0, errorLogger_1.logError)("Error dropping database indexes", error);
+        (0, logger_1.logError)("Error dropping database indexes", error);
     }
 }
 /**
@@ -139,7 +139,7 @@ async function listCollectionIndexes(collectionName) {
         return indexes;
     }
     catch (error) {
-        (0, errorLogger_1.logError)(`Error listing indexes for ${collectionName}`, error);
+        (0, logger_1.logError)(`Error listing indexes for ${collectionName}`, error);
         return [];
     }
 }

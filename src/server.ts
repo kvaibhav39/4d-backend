@@ -20,7 +20,7 @@ import dashboardRoutes from "./routes/dashboard";
 import publicRoutes from "./routes/public";
 
 import { createDatabaseIndexes } from "./config/database-indexes";
-import { logError } from "./utils/errorLogger";
+import { logError, logInfo } from "./utils/logger";
 
 dotenv.config();
 
@@ -37,7 +37,7 @@ const PORT = process.env.PORT || 4000;
 mongoose
   .connect(MONGODB_URI)
   .then(async () => {
-    console.log("Connected to MongoDB");
+    logInfo("Connected to MongoDB");
     // Create database indexes for optimal query performance
     await createDatabaseIndexes();
   })
@@ -86,5 +86,5 @@ process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Backend server listening on port ${PORT}`);
+  logInfo(`Backend server listening on port ${PORT}`);
 });

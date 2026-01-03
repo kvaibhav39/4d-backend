@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PublicController = void 0;
 const public_service_1 = require("../services/public.service");
-const errorLogger_1 = require("../utils/errorLogger");
+const logger_1 = require("../utils/logger");
 const publicService = new public_service_1.PublicService();
 class PublicController {
     async getOrg(req, res) {
@@ -15,7 +15,7 @@ class PublicController {
                 error.message === "Organization not found") {
                 return res.status(404).json({ message: error.message });
             }
-            (0, errorLogger_1.logError)("Get org error", error);
+            (0, logger_1.logError)("Get org error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -29,7 +29,7 @@ class PublicController {
                 error.message === "Organization not found") {
                 return res.status(404).json({ message: error.message });
             }
-            (0, errorLogger_1.logError)("Get public products error", error);
+            (0, logger_1.logError)("Get public products error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -43,7 +43,7 @@ class PublicController {
                 error.message === "Organization not found") {
                 return res.status(404).json({ message: error.message });
             }
-            (0, errorLogger_1.logError)("Get public categories error", error);
+            (0, logger_1.logError)("Get public categories error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -53,7 +53,7 @@ class PublicController {
             res.json(features);
         }
         catch (error) {
-            (0, errorLogger_1.logError)("Get features error", error);
+            (0, logger_1.logError)("Get features error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -73,7 +73,7 @@ class PublicController {
             res.json({ message: result.message });
         }
         catch (error) {
-            (0, errorLogger_1.logError)("Submit contact error", error);
+            (0, logger_1.logError)("Submit contact error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }

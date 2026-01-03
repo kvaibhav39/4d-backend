@@ -5,7 +5,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
-import { logError } from "../utils/errorLogger";
+import { logError, logWarn } from "../utils/logger";
 
 dotenv.config();
 
@@ -68,9 +68,7 @@ export class S3Service {
    */
   static async deleteFile(fileUrl: string): Promise<boolean> {
     if (!BUCKET_NAME) {
-      console.warn(
-        "AWS_S3_BUCKET_NAME is not configured, skipping file deletion"
-      );
+      logWarn("AWS_S3_BUCKET_NAME is not configured, skipping file deletion");
       return false;
     }
 
@@ -79,7 +77,7 @@ export class S3Service {
       // URL format: https://bucket-name.s3.region.amazonaws.com/key
       const urlParts = fileUrl.split(".amazonaws.com/");
       if (urlParts.length !== 2) {
-        console.warn("Invalid S3 URL format for deletion:", fileUrl);
+        logWarn("Invalid S3 URL format for deletion:", fileUrl);
         return false;
       }
 
@@ -96,12 +94,12 @@ export class S3Service {
     } catch (error: any) {
       // Log warning instead of throwing - deletion failure shouldn't block the update
       if (error.Code === "AccessDenied" || error.name === "AccessDenied") {
-        console.warn(
+        logWarn(
           "S3 delete permission denied. The IAM user needs s3:DeleteObject permission. File may still exist:",
           fileUrl
         );
       } else {
-        console.warn(
+        logWarn(
           "Error deleting file from S3 (non-blocking):",
           error.message || error
         );

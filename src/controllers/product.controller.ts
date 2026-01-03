@@ -2,7 +2,7 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { ProductService } from "../services/product.service";
 import { S3Service } from "../services/s3.service";
-import { logError } from "../utils/errorLogger";
+import { logError } from "../utils/logger";
 
 const productService = new ProductService();
 

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashboardController = void 0;
 const dashboard_service_1 = require("../services/dashboard.service");
-const errorLogger_1 = require("../utils/errorLogger");
+const logger_1 = require("../utils/logger");
 const dashboardService = new dashboard_service_1.DashboardService();
 class DashboardController {
     async getStats(req, res) {
@@ -13,7 +13,7 @@ class DashboardController {
             res.json(stats);
         }
         catch (error) {
-            (0, errorLogger_1.logError)("Dashboard stats error", error);
+            (0, logger_1.logError)("Dashboard stats error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -25,7 +25,7 @@ class DashboardController {
             res.json(bookings);
         }
         catch (error) {
-            (0, errorLogger_1.logError)("Dashboard bookings error", error);
+            (0, logger_1.logError)("Dashboard bookings error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -37,7 +37,7 @@ class DashboardController {
             res.json(bookings);
         }
         catch (error) {
-            (0, errorLogger_1.logError)("Dashboard recent bookings error", error);
+            (0, logger_1.logError)("Dashboard recent bookings error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -49,7 +49,7 @@ class DashboardController {
             res.json(bookings);
         }
         catch (error) {
-            (0, errorLogger_1.logError)("Dashboard customer returns error", error);
+            (0, logger_1.logError)("Dashboard customer returns error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -61,7 +61,7 @@ class DashboardController {
             res.json(bookings);
         }
         catch (error) {
-            (0, errorLogger_1.logError)("Dashboard customer pickups error", error);
+            (0, logger_1.logError)("Dashboard customer pickups error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
@@ -73,7 +73,7 @@ class DashboardController {
             res.json(topProducts);
         }
         catch (error) {
-            (0, errorLogger_1.logError)("Dashboard top products error", error);
+            (0, logger_1.logError)("Dashboard top products error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }

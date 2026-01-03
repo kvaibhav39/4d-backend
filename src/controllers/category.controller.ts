@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { CategoryService } from "../services/category.service";
-import { logError } from "../utils/errorLogger";
+import { logError } from "../utils/logger";
 
 const categoryService = new CategoryService();
 

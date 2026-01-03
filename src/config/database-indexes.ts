@@ -5,7 +5,7 @@ import { Booking } from "../models/Booking";
 import { Category } from "../models/Category";
 import { User } from "../models/User";
 import { Organization } from "../models/Organization";
-import { logError } from "../utils/errorLogger";
+import { logError, logInfo, logWarn } from "../utils/logger";
 
 /**
  * Create database indexes for optimal query performance
@@ -20,7 +20,7 @@ import { logError } from "../utils/errorLogger";
  */
 export async function createDatabaseIndexes(): Promise<void> {
   try {
-    console.log("Creating database indexes...");
+    logInfo("Creating database indexes...");
 
     // Helper function to safely create index with error handling
     const createIndexSafe = async (
@@ -37,7 +37,7 @@ export async function createDatabaseIndexes(): Promise<void> {
         // Ignore errors for existing indexes with same spec
         if (error.code === 85 || error.codeName === "IndexOptionsConflict") {
           // Index exists with different options - log but don't fail
-          console.warn(
+          logWarn(
             `Index conflict for ${JSON.stringify(indexSpec)}: ${error.message}`
           );
         } else if (
@@ -123,7 +123,7 @@ export async function createDatabaseIndexes(): Promise<void> {
       { unique: true }
     );
 
-    console.log("Database indexes created successfully");
+    logInfo("Database indexes created successfully");
   } catch (error: any) {
     logError("Error creating database indexes", error);
     // Don't throw - indexes might already exist or be created by Mongoose
@@ -136,7 +136,7 @@ export async function createDatabaseIndexes(): Promise<void> {
  */
 export async function dropDatabaseIndexes(): Promise<void> {
   try {
-    console.log("Dropping database indexes...");
+    logInfo("Dropping database indexes...");
 
     await Product.collection.dropIndexes();
     await Order.collection.dropIndexes();
@@ -144,7 +144,7 @@ export async function dropDatabaseIndexes(): Promise<void> {
     await Category.collection.dropIndexes();
     await User.collection.dropIndexes();
 
-    console.log("Database indexes dropped successfully");
+    logInfo("Database indexes dropped successfully");
   } catch (error: any) {
     logError("Error dropping database indexes", error);
   }
