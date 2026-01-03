@@ -64,6 +64,7 @@ const BookingSchema = new mongoose_1.Schema({
     isConflictOverridden: { type: Boolean, default: false },
     additionalItemsDescription: { type: String },
     payments: { type: [PaymentSchema], default: [] },
+    pendingRefundAmount: { type: Number, default: 0 },
 }, { timestamps: true });
 BookingSchema.index({ orgId: 1, productId: 1, fromDateTime: 1, toDateTime: 1 });
 BookingSchema.index({ orderId: 1 });

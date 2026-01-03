@@ -102,10 +102,35 @@ exports.returnProductSchema = joi_1.default.object({
     }),
 });
 exports.cancelBookingSchema = joi_1.default.object({
+    shouldTransfer: joi_1.default.boolean().optional(),
+    transfers: joi_1.default.array()
+        .items(joi_1.default.object({
+        bookingId: joi_1.default.string().pattern(objectIdPattern).required().messages({
+            "string.pattern.base": "Invalid booking ID format",
+            "any.required": "Booking ID is required",
+        }),
+        amount: joi_1.default.number().min(0.01).required().messages({
+            "number.base": "Transfer amount must be a number",
+            "number.min": "Transfer amount must be greater than 0",
+            "any.required": "Transfer amount is required",
+        }),
+    }))
+        .optional(),
+    shouldRefund: joi_1.default.boolean().optional(),
     refundAmount: joi_1.default.number().min(0).optional().messages({
         "number.min": "Refund amount must be positive or zero",
     }),
-});
+}).custom((value, helpers) => {
+    // If shouldTransfer is true, transfers array must be provided and not empty
+    if (value.shouldTransfer === true) {
+        if (!value.transfers || value.transfers.length === 0) {
+            return helpers.error("any.custom", {
+                message: "Transfers array is required when shouldTransfer is true",
+            });
+        }
+    }
+    return value;
+}, "Transfer validation");
 exports.addPaymentSchema = joi_1.default.object({
     type: joi_1.default.string()
         .valid("ADVANCE", "PAYMENT_RECEIVED", "REFUND")

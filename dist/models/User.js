@@ -39,6 +39,7 @@ const UserSchema = new mongoose_1.Schema({
     orgId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Organization", required: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
+    phoneNumber: { type: String, required: false, sparse: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ["admin", "staff"], default: "staff" },
     isActive: { type: Boolean, default: true },

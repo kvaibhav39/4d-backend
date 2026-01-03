@@ -16,4 +16,5 @@ router.put("/:id", (0, validate_1.validateParams)(product_validator_1.getProduct
 router.delete("/:id", (0, validate_1.validateParams)(product_validator_1.getProductParamsSchema), (req, res) => productController.deleteProduct(req, res));
 router.post("/:id/restore", (0, validate_1.validateParams)(product_validator_1.getProductParamsSchema), (req, res) => productController.restoreProduct(req, res));
 router.get("/:id/bookings", (0, validate_1.validateParams)(product_validator_1.getProductParamsSchema), (0, validate_1.validateQuery)(product_validator_1.getProductBookingsQuerySchema), (req, res) => productController.getProductBookings(req, res));
+router.post("/bulk-update-order", (0, validate_1.validate)(product_validator_1.bulkUpdateProductOrderSchema), (req, res) => productController.bulkUpdateProductOrder(req, res));
 exports.default = router;

@@ -15,6 +15,5 @@ router.put("/:id", (0, validate_1.validateParams)(order_validator_1.getOrderPara
 router.post("/:id/bookings", (0, validate_1.validateParams)(order_validator_1.getOrderParamsSchema), (0, validate_1.validate)(order_validator_1.addBookingToOrderSchema), (req, res) => orderController.addBooking(req, res));
 router.get("/:id/preview-cancellation-refund", (0, validate_1.validateParams)(order_validator_1.getOrderParamsSchema), (req, res) => orderController.previewCancellationRefund(req, res));
 router.post("/:id/cancel", (0, validate_1.validateParams)(order_validator_1.getOrderParamsSchema), (0, validate_1.validate)(order_validator_1.cancelOrderSchema), (req, res) => orderController.cancelOrder(req, res));
-router.post("/:id/payments", (0, validate_1.validateParams)(order_validator_1.getOrderParamsSchema), (0, validate_1.validate)(order_validator_1.collectPaymentSchema), (req, res) => orderController.collectPayment(req, res));
 router.get("/:id/invoice", (0, validate_1.validateParams)(order_validator_1.getOrderParamsSchema), (req, res) => orderController.generateInvoice(req, res));
 exports.default = router;

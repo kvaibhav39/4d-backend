@@ -38,5 +38,9 @@ const mongoose_1 = __importStar(require("mongoose"));
 const OrganizationSchema = new mongoose_1.Schema({
     name: { type: String, required: true },
     code: { type: String, required: true, unique: true },
+    subdomain: { type: String, required: true, unique: true },
+    instagram: { type: String, required: false },
+    facebook: { type: String, required: false },
+    contact: { type: String, required: false },
 }, { timestamps: true });
 exports.Organization = mongoose_1.default.model("Organization", OrganizationSchema);

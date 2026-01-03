@@ -46,6 +46,7 @@ const ProductSchema = new mongoose_1.Schema({
     size: { type: String },
     imageUrl: { type: String },
     isActive: { type: Boolean, default: true },
+    featuredOrder: { type: Number, required: false },
 }, { timestamps: true });
 ProductSchema.index({ orgId: 1, code: 1 }, { unique: true });
 exports.Product = mongoose_1.default.model("Product", ProductSchema);

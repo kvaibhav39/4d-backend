@@ -383,7 +383,7 @@ class BookingService {
     /**
      * Cancel a booking - only status change allowed via this method
      */
-    async cancelBooking(id, orgId, refundAmount) {
+    async cancelBooking(id, orgId, options) {
         const booking = await Booking_1.Booking.findOne({ _id: id, orgId });
         if (!booking) {
             throw new Error("Booking not found");
@@ -393,12 +393,7 @@ class BookingService {
         if (previousStatus !== "BOOKED") {
             throw new Error(`Cannot cancel booking. Booking must be in "BOOKED" status to cancel. Current status: ${previousStatus}`);
         }
-        // For cancellation, use refundAmount parameter if provided
-        // If not provided, it will be calculated automatically
-        const cancellationRefundAmount = refundAmount !== undefined && refundAmount >= 0
-            ? refundAmount
-            : undefined;
-        const refundInfo = await orderService.handleBookingCancellation(id, orgId, cancellationRefundAmount);
+        const refundInfo = await orderService.handleBookingCancellation(id, orgId, options);
         // The booking status is already set to CANCELLED by handleBookingCancellation
         const cancelledBooking = await Booking_1.Booking.findById(id)
             .populate("productId")
@@ -612,6 +607,14 @@ class BookingService {
             // Validate that refund amount doesn't exceed total paid
             if (paymentData.amount > currentTotalPaid) {
                 throw new Error(`Refund amount (Rs.${paymentData.amount.toFixed(2)}) cannot exceed total paid amount (Rs.${currentTotalPaid.toFixed(2)}). Maximum refund allowed: Rs.${currentTotalPaid.toFixed(2)}.`);
+            }
+            // If booking has pendingRefundAmount, validate and reduce it
+            if (booking.pendingRefundAmount && booking.pendingRefundAmount > 0) {
+                if (paymentData.amount > booking.pendingRefundAmount) {
+                    throw new Error(`Refund amount (Rs.${paymentData.amount.toFixed(2)}) cannot exceed pending refund amount (Rs.${booking.pendingRefundAmount.toFixed(2)}). Maximum refund allowed: Rs.${booking.pendingRefundAmount.toFixed(2)}.`);
+                }
+                // Reduce pending refund amount
+                booking.pendingRefundAmount = Math.max(0, booking.pendingRefundAmount - paymentData.amount);
             }
             // Add refund payment (amount already validated above)
             booking.payments.push({

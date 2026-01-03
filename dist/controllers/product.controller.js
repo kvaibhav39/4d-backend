@@ -10,8 +10,12 @@ class ProductController {
             const orgId = req.user.orgId;
             const search = req.query.search;
             const includeDeleted = req.query.includeDeleted === "true";
-            const page = req.query.page ? parseInt(req.query.page, 10) : undefined;
-            const limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined;
+            const page = req.query.page
+                ? parseInt(req.query.page, 10)
+                : undefined;
+            const limit = req.query.limit
+                ? parseInt(req.query.limit, 10)
+                : undefined;
             const result = await productService.listProducts({
                 orgId,
                 search,
@@ -44,7 +48,7 @@ class ProductController {
     async createProduct(req, res) {
         try {
             const orgId = req.user.orgId;
-            const { title, description, code, categoryId, defaultRent, color, size } = req.body;
+            const { title, description, code, categoryId, defaultRent, color, size, featuredOrder, } = req.body;
             const file = req.file;
             let imageUrl;
             // Upload image to S3 if file is provided
@@ -70,6 +74,7 @@ class ProductController {
                 color,
                 size,
                 imageUrl,
+                featuredOrder: featuredOrder ? parseInt(featuredOrder) : undefined,
             });
             res.status(201).json(product);
         }
@@ -88,7 +93,7 @@ class ProductController {
         try {
             const orgId = req.user.orgId;
             const { id } = req.params;
-            const { title, description, code, categoryId, defaultRent, color, size, isActive, } = req.body;
+            const { title, description, code, categoryId, defaultRent, color, size, isActive, featuredOrder, } = req.body;
             const file = req.file;
             // Get existing product to check for old image
             const existingProduct = await productService.getProductById(id, orgId);
@@ -122,6 +127,11 @@ class ProductController {
                 size,
                 imageUrl,
                 isActive,
+                featuredOrder: featuredOrder !== undefined
+                    ? featuredOrder === "" || featuredOrder === null
+                        ? null
+                        : parseInt(featuredOrder)
+                    : undefined,
             });
             res.json(product);
         }
@@ -182,6 +192,26 @@ class ProductController {
                 return res.status(404).json({ message: error.message });
             }
             console.error("Get product bookings error", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+    async bulkUpdateProductOrder(req, res) {
+        try {
+            const orgId = req.user.orgId;
+            const { updates } = req.body;
+            if (!Array.isArray(updates) || updates.length === 0) {
+                return res.status(400).json({
+                    message: "Updates array is required and must not be empty",
+                });
+            }
+            const result = await productService.bulkUpdateProductOrder(orgId, updates);
+            res.json(result);
+        }
+        catch (error) {
+            if (error.message === "Some products not found or don't belong to organization") {
+                return res.status(400).json({ message: error.message });
+            }
+            console.error("Bulk update product order error", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }

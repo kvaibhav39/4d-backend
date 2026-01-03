@@ -1,7 +1,109 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PublicService = void 0;
+const subdomain_1 = require("../utils/subdomain");
+const Organization_1 = require("../models/Organization");
+const Product_1 = require("../models/Product");
+const Category_1 = require("../models/Category");
 class PublicService {
+    async getOrgBySubdomain(req) {
+        const subdomain = (0, subdomain_1.extractSubdomain)(req);
+        if (!subdomain) {
+            throw new Error("Subdomain is required");
+        }
+        const organization = await Organization_1.Organization.findOne({ subdomain });
+        if (!organization) {
+            throw new Error("Organization not found");
+        }
+        return {
+            id: organization._id.toString(),
+            name: organization.name,
+            code: organization.code,
+            subdomain: organization.subdomain,
+            instagram: organization.instagram,
+            facebook: organization.facebook,
+            contact: organization.contact,
+        };
+    }
+    async getPublicProducts(req) {
+        const subdomain = (0, subdomain_1.extractSubdomain)(req);
+        if (!subdomain) {
+            throw new Error("Subdomain is required");
+        }
+        const organization = await Organization_1.Organization.findOne({ subdomain });
+        if (!organization) {
+            throw new Error("Organization not found");
+        }
+        // Get only active products
+        const products = await Product_1.Product.find({
+            orgId: organization._id,
+            isActive: { $ne: false },
+        })
+            .populate("categoryId")
+            .sort({ createdAt: -1 })
+            .lean();
+        // Transform products and filter only those with imageUrl
+        const transformedProducts = products
+            .filter((product) => product.imageUrl && product.imageUrl.trim() !== "")
+            .map((product) => {
+            const transformed = {
+                id: product._id.toString(),
+                title: product.title,
+                description: product.description,
+                code: product.code,
+                defaultRent: product.defaultRent,
+                color: product.color,
+                size: product.size,
+                imageUrl: product.imageUrl,
+                featuredOrder: product.featuredOrder,
+            };
+            if (product.categoryId && typeof product.categoryId === "object") {
+                transformed.category = {
+                    id: product.categoryId._id.toString(),
+                    name: product.categoryId.name,
+                    description: product.categoryId.description,
+                };
+                transformed.categoryId = product.categoryId._id.toString();
+            }
+            return transformed;
+        });
+        // Separate featured and regular products
+        // Only top 5 featured products (sorted by featuredOrder) with imageUrl
+        const allFeatured = transformedProducts
+            .filter((p) => p.featuredOrder != null)
+            .sort((a, b) => (a.featuredOrder || 0) - (b.featuredOrder || 0));
+        const featuredProducts = allFeatured.slice(0, 5);
+        // Get IDs of featured products to exclude from regular
+        const featuredIds = new Set(featuredProducts.map((p) => p.id));
+        // All other products (not in top 5 featured) are regular products
+        const regularProducts = transformedProducts.filter((p) => !featuredIds.has(p.id));
+        return {
+            featured: featuredProducts,
+            regular: regularProducts,
+        };
+    }
+    async getPublicCategories(req) {
+        const subdomain = (0, subdomain_1.extractSubdomain)(req);
+        if (!subdomain) {
+            throw new Error("Subdomain is required");
+        }
+        const organization = await Organization_1.Organization.findOne({ subdomain });
+        if (!organization) {
+            throw new Error("Organization not found");
+        }
+        // Get only active categories
+        const categories = await Category_1.Category.find({
+            orgId: organization._id,
+            isActive: { $ne: false },
+        })
+            .sort({ name: 1 })
+            .lean();
+        return categories.map((category) => ({
+            id: category._id.toString(),
+            name: category.name,
+            description: category.description,
+        }));
+    }
     getFeatures() {
         return {
             features: [

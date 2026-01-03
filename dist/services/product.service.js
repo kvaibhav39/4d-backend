@@ -1,12 +1,16 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductService = void 0;
+const mongoose_1 = __importDefault(require("mongoose"));
 const Product_1 = require("../models/Product");
 const Booking_1 = require("../models/Booking");
 const pagination_1 = require("../types/pagination");
 class ProductService {
     async listProducts(filters) {
-        const { orgId, search, includeDeleted, page: rawPage, limit: rawLimit } = filters;
+        const { orgId, search, includeDeleted, page: rawPage, limit: rawLimit, } = filters;
         // Validate and set pagination params
         const { page, limit } = pagination_1.PaginationHelper.validateParams(rawPage, rawLimit);
         const skip = pagination_1.PaginationHelper.getSkip(page, limit);
@@ -23,17 +27,40 @@ class ProductService {
             ];
         }
         // Execute count and find in parallel for better performance
+        // Sort: featured products first (by featuredOrder ascending), then non-featured (by createdAt descending)
         const [total, products] = await Promise.all([
             Product_1.Product.countDocuments(query),
             Product_1.Product.find(query)
                 .populate("categoryId")
-                .sort({ createdAt: -1 })
+                .sort({
+                // Sort by featuredOrder ascending, but nulls come last
+                // Using $ifNull to handle nulls - nulls will be treated as a large number
+                featuredOrder: 1,
+            })
+                .collation({ locale: "en", numericOrdering: true })
                 .skip(skip)
                 .limit(limit)
-                .lean() // Use lean() for better performance since we're transforming anyway
+                .lean(), // Use lean() for better performance since we're transforming anyway
         ]);
+        // Post-process to ensure correct order: featured products first (ascending), then non-featured
+        const sortedProducts = products.sort((a, b) => {
+            // If both have featuredOrder, sort by featuredOrder ascending
+            if (a.featuredOrder != null && b.featuredOrder != null) {
+                return a.featuredOrder - b.featuredOrder;
+            }
+            // If only a has featuredOrder, a comes first
+            if (a.featuredOrder != null && b.featuredOrder == null) {
+                return -1;
+            }
+            // If only b has featuredOrder, b comes first
+            if (a.featuredOrder == null && b.featuredOrder != null) {
+                return 1;
+            }
+            // If neither has featuredOrder, sort by createdAt descending
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
         // Transform products to separate categoryId (string) and category (object)
-        const transformedProducts = products.map((product) => {
+        const transformedProducts = sortedProducts.map((product) => {
             if (product.categoryId && typeof product.categoryId === "object") {
                 product.category = product.categoryId;
                 product.categoryId = product.categoryId._id.toString();
@@ -64,7 +91,7 @@ class ProductService {
         return productObj;
     }
     async createProduct(data) {
-        const { orgId, title, description, code, categoryId, defaultRent, color, size, imageUrl, } = data;
+        const { orgId, title, description, code, categoryId, defaultRent, color, size, imageUrl, featuredOrder, } = data;
         // Check if product with same code exists
         const existing = await Product_1.Product.findOne({
             orgId,
@@ -73,6 +100,23 @@ class ProductService {
         });
         if (existing) {
             throw new Error("Product code already exists");
+        }
+        // Auto-assign featuredOrder if provided (product should be featured)
+        let finalFeaturedOrder = undefined;
+        if (featuredOrder !== undefined && featuredOrder !== null) {
+            // Find the maximum featuredOrder for this organization
+            const maxFeatured = await Product_1.Product.findOne({
+                orgId,
+                featuredOrder: { $ne: null },
+                isActive: { $ne: false },
+            })
+                .sort({ featuredOrder: -1 })
+                .select("featuredOrder")
+                .lean();
+            // Set to max + 1, or 1 if it's the first featured product
+            finalFeaturedOrder = maxFeatured?.featuredOrder
+                ? maxFeatured.featuredOrder + 1
+                : 1;
         }
         const product = await Product_1.Product.create({
             orgId,
@@ -84,6 +128,7 @@ class ProductService {
             color,
             size,
             imageUrl,
+            featuredOrder: finalFeaturedOrder,
         });
         const populatedProduct = await Product_1.Product.findById(product._id).populate("categoryId");
         if (!populatedProduct)
@@ -132,6 +177,10 @@ class ProductService {
             updateData.isActive = data.isActive;
         if (data.categoryId !== undefined) {
             updateData.categoryId = data.categoryId || null;
+        }
+        if (data.featuredOrder !== undefined) {
+            updateData.featuredOrder =
+                data.featuredOrder === null ? undefined : data.featuredOrder;
         }
         const updated = await Product_1.Product.findOneAndUpdate({ _id: id, orgId }, { $set: updateData }, { new: true }).populate("categoryId");
         if (!updated)
@@ -230,6 +279,44 @@ class ProductService {
             }
             return bookingObj;
         });
+    }
+    async bulkUpdateProductOrder(orgId, updates) {
+        // Verify all products belong to the organization
+        const productIds = updates.map((u) => new mongoose_1.default.Types.ObjectId(u.id));
+        const existingProducts = await Product_1.Product.find({
+            _id: { $in: productIds },
+            orgId: new mongoose_1.default.Types.ObjectId(orgId),
+        });
+        if (existingProducts.length !== updates.length) {
+            throw new Error("Some products not found or don't belong to organization");
+        }
+        // Perform bulk updates using bulkWrite
+        // bulkWrite is atomic per document and works without replica sets
+        // All operations are executed in order, and if one fails, subsequent ones are skipped
+        const bulkOps = updates.map((update) => {
+            const updateDoc = {};
+            if (update.featuredOrder === null) {
+                updateDoc.$unset = { featuredOrder: "" };
+            }
+            else {
+                updateDoc.$set = { featuredOrder: update.featuredOrder };
+            }
+            return {
+                updateOne: {
+                    filter: {
+                        _id: new mongoose_1.default.Types.ObjectId(update.id),
+                        orgId: new mongoose_1.default.Types.ObjectId(orgId),
+                    },
+                    update: updateDoc,
+                },
+            };
+        });
+        const result = await Product_1.Product.bulkWrite(bulkOps, { ordered: false });
+        return {
+            success: true,
+            updated: result.modifiedCount,
+            matched: result.matchedCount,
+        };
     }
 }
 exports.ProductService = ProductService;

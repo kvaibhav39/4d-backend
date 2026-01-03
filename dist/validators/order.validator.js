@@ -3,9 +3,36 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.listOrdersQuerySchema = exports.getOrderParamsSchema = exports.cancelOrderSchema = exports.collectPaymentSchema = exports.addBookingToOrderSchema = exports.updateOrderSchema = exports.createOrderSchema = void 0;
+exports.listOrdersQuerySchema = exports.getOrderParamsSchema = exports.cancelOrderSchema = exports.addBookingToOrderSchema = exports.updateOrderSchema = exports.createOrderSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
+const phone_1 = require("../utils/phone");
 const objectIdPattern = /^[0-9a-fA-F]{24}$/;
+// Reusable phone number validation for customer phone (optional field)
+const customerPhoneValidation = joi_1.default.string()
+    .trim()
+    .custom((value, helpers) => {
+    // Allow empty string or null (optional field)
+    if (!value || value === "" || value === null) {
+        return value;
+    }
+    // Normalize the phone number
+    const normalized = (0, phone_1.normalizePhoneNumber)(value);
+    if (!normalized) {
+        return helpers.error("string.phoneInvalid");
+    }
+    // Validate with strict country-specific rules
+    if (!(0, phone_1.isValidPhoneNumberWithCountry)(normalized)) {
+        return helpers.error("string.phoneInvalid");
+    }
+    // Return normalized value
+    return normalized;
+}, "Phone number validation")
+    .allow("", null)
+    .optional()
+    .messages({
+    "string.base": "Customer phone must be a string",
+    "string.phoneInvalid": "Phone number must be a valid international format with correct country code (e.g., +91 9876543210)",
+});
 exports.createOrderSchema = joi_1.default.object({
     customerName: joi_1.default.string().trim().min(1).max(200).required().messages({
         "string.empty": "Customer name cannot be empty",
@@ -13,14 +40,7 @@ exports.createOrderSchema = joi_1.default.object({
         "string.max": "Customer name must not exceed 200 characters",
         "any.required": "Customer name is required",
     }),
-    customerPhone: joi_1.default.string()
-        .trim()
-        .max(20)
-        .allow("", null)
-        .optional()
-        .messages({
-        "string.max": "Customer phone must not exceed 20 characters",
-    }),
+    customerPhone: customerPhoneValidation,
     bookings: joi_1.default.array()
         .items(joi_1.default.object({
         productId: joi_1.default.string().pattern(objectIdPattern).required().messages({
@@ -80,14 +100,7 @@ exports.updateOrderSchema = joi_1.default.object({
         "string.min": "Customer name must be at least 1 character",
         "string.max": "Customer name must not exceed 200 characters",
     }),
-    customerPhone: joi_1.default.string()
-        .trim()
-        .max(20)
-        .allow("", null)
-        .optional()
-        .messages({
-        "string.max": "Customer phone must not exceed 20 characters",
-    }),
+    customerPhone: customerPhoneValidation,
 });
 exports.addBookingToOrderSchema = joi_1.default.object({
     productId: joi_1.default.string().pattern(objectIdPattern).required().messages({
@@ -135,16 +148,6 @@ exports.addBookingToOrderSchema = joi_1.default.object({
         "string.max": "Additional items description must not exceed 1000 characters",
     }),
     overrideConflicts: joi_1.default.boolean().optional(),
-});
-exports.collectPaymentSchema = joi_1.default.object({
-    amount: joi_1.default.number().min(0.01).required().messages({
-        "number.base": "Amount must be a number",
-        "number.min": "Amount must be greater than 0",
-        "any.required": "Amount is required",
-    }),
-    note: joi_1.default.string().trim().max(500).allow("", null).optional().messages({
-        "string.max": "Note must not exceed 500 characters",
-    }),
 });
 exports.cancelOrderSchema = joi_1.default.object({
     refundAmount: joi_1.default.number().min(0).optional().messages({
