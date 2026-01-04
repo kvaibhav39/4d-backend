@@ -59,6 +59,8 @@ export class PublicService {
       instagram: organization.instagram,
       facebook: organization.facebook,
       contact: organization.contact,
+      address: organization.address,
+      location: organization.location,
     };
   }
 

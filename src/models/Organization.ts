@@ -7,6 +7,8 @@ export interface IOrganization extends Document {
   instagram?: string;
   facebook?: string;
   contact?: string;
+  address?: string;
+  location?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +21,8 @@ const OrganizationSchema = new Schema<IOrganization>(
     instagram: { type: String, required: false },
     facebook: { type: String, required: false },
     contact: { type: String, required: false },
+    address: { type: String, required: false },
+    location: { type: String, required: false },
   },
   { timestamps: true }
 );

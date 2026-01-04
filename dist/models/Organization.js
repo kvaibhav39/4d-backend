@@ -42,5 +42,7 @@ const OrganizationSchema = new mongoose_1.Schema({
     instagram: { type: String, required: false },
     facebook: { type: String, required: false },
     contact: { type: String, required: false },
+    address: { type: String, required: false },
+    location: { type: String, required: false },
 }, { timestamps: true });
 exports.Organization = mongoose_1.default.model("Organization", OrganizationSchema);
