@@ -43,7 +43,7 @@ class PublicService {
             isActive: { $ne: false },
         })
             .populate("categoryId")
-            .sort({ createdAt: -1 })
+            .sort({ featuredOrder: 1 })
             .lean();
         // Transform products and filter only those with imageUrl
         const transformedProducts = products
@@ -82,7 +82,7 @@ class PublicService {
         const regularProducts = transformedProducts.filter((p) => !featuredIds.has(p.id));
         return {
             featured: featuredProducts,
-            regular: regularProducts,
+            regular: [...regularProducts, ...featuredProducts],
         };
     }
     async getPublicCategories(req) {
