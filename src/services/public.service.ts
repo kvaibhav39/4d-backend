@@ -81,7 +81,7 @@ export class PublicService {
       isActive: { $ne: false },
     })
       .populate("categoryId")
-      .sort({ createdAt: -1 })
+      .sort({ featuredOrder: 1 })
       .lean();
 
     // Transform products and filter only those with imageUrl
@@ -134,7 +134,7 @@ export class PublicService {
 
     return {
       featured: featuredProducts,
-      regular: regularProducts,
+      regular: [...regularProducts, ...featuredProducts],
     };
   }
 
